@@ -1,0 +1,13 @@
+{
+  "phpServer": "http://localhost",
+  "database": {
+    "host": "localhost",
+    "port": 3306,
+    "defaultDatabase": ""
+  },
+  "pyodideVersion": "0.26.4",
+  "turtleCanvas": {
+    "width": 800,
+    "height": 600
+  }
+}
