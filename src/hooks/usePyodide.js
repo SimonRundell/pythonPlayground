@@ -67,6 +67,7 @@ function usePyodide(turtleCanvasRef, resetKey = 0) {
   const [output, setOutput] = useState([])
   const [installedPackages, setInstalledPackages] = useState(new Set())
   const [installing, setInstalling] = useState(null)
+  const [inputRequest, setInputRequest] = useState(null)
 
   const pyRef = useRef(null)
   /** Collects output items synchronously during a run; flushed to state on completion. */
@@ -151,14 +152,74 @@ class _Capture:
 sys.stdout = _Capture(False)
 sys.stderr = _Capture(True)
 
-# Override input() to use browser prompt dialog
-def _py_input(prompt=''):
-    result = _js.window.prompt(str(prompt))
+# Override input() with an async version backed by a React modal.
+# The JS side creates a Promise; setInputRequest triggers the modal to render;
+# when the user submits, the Promise resolves and Python continues.
+async def _py_input(prompt=''):
+    result = await _js._py_input_request(str(prompt))
     return '' if result is None else str(result)
 builtins.input = _py_input
 
+# AST transformer: rewrites input(...) → await input(...) in user code,
+# and promotes any function containing await to async def.
+import ast as _ast
+
+class _InputTransformer(_ast.NodeTransformer):
+    def __init__(self):
+        self._new_async = set()
+    def visit_Call(self, node):
+        self.generic_visit(node)
+        if isinstance(node.func, _ast.Name) and node.func.id == 'input':
+            return _ast.copy_location(_ast.Await(value=node), node)
+        return node
+    def visit_FunctionDef(self, node):
+        self.generic_visit(node)
+        if any(isinstance(n, _ast.Await) for n in _ast.walk(_ast.Module(body=node.body, type_ignores=[]))):
+            self._new_async.add(node.name)
+            new = _ast.AsyncFunctionDef(name=node.name, args=node.args,
+                body=node.body, decorator_list=node.decorator_list,
+                returns=node.returns, lineno=node.lineno, col_offset=node.col_offset)
+            return _ast.copy_location(new, node)
+        return node
+
+class _AsyncCallTransformer(_ast.NodeTransformer):
+    def __init__(self, names):
+        self._names = names
+    def visit_Call(self, node):
+        self.generic_visit(node)
+        if isinstance(node.func, _ast.Name) and node.func.id in self._names:
+            return _ast.copy_location(_ast.Await(value=node), node)
+        return node
+
+def _transform_input(source):
+    try:
+        tree = _ast.parse(source)
+        t = _InputTransformer()
+        tree = t.visit(tree)
+        if t._new_async:
+            tree = _AsyncCallTransformer(t._new_async).visit(tree)
+        _ast.fix_missing_locations(tree)
+        return _ast.unparse(tree)
+    except Exception:
+        return source
+
 `)
         if (!mounted) return
+
+        // Register the JS side of input(): creates a Promise that the React
+        // InputModal resolves when the user submits a value.
+        window._py_input_request = (prompt) => new Promise((resolve) => {
+          setInputRequest({ prompt: String(prompt), resolve })
+        })
+
+        // ── Set up /workspace/ for student data and module files ─────────────
+        try { py.FS.mkdir('/workspace') } catch (_) {}
+        await py.runPythonAsync(`
+import sys, os
+if '/workspace' not in sys.path:
+    sys.path.insert(0, '/workspace')
+os.chdir('/workspace')
+`)
 
         // ── Inject custom Python modules into Pyodide's virtual FS ───────────
         if (mounted) setLoadingMessage('Loading modules…')
@@ -210,14 +271,42 @@ if '/pyodide_modules' not in sys.path:
   }, [isLoaded, turtleCanvasRef])
 
   // ── Code execution ──────────────────────────────────────────────────────────
-  const runCode = useCallback(async (code) => {
+  /**
+   * @param {string} code          - Python source to execute (the active file)
+   * @param {object} [workspaceFiles] - All workspace files { filename: content }
+   *   Written to /workspace/ so they are importable and openable by the code.
+   */
+  const runCode = useCallback(async (code, workspaceFiles) => {
     if (!pyRef.current || isRunning) return
 
     setIsRunning(true)
     runBuffer.current = []
     if (window._turtle_reset) window._turtle_reset()
 
+    // Sync all workspace files to Pyodide's /workspace/ directory
+    if (workspaceFiles) {
+      for (const [filename, content] of Object.entries(workspaceFiles)) {
+        try {
+          pyRef.current.FS.writeFile(`/workspace/${filename}`, content)
+        } catch (_) {
+          try {
+            pyRef.current.FS.writeFile(`/workspace/${filename}`,
+              new TextEncoder().encode(content))
+          } catch (err) {
+            console.warn(`Could not sync ${filename} to workspace:`, err)
+          }
+        }
+      }
+    }
+
     try {
+      // Transform input() → await input() using the Python AST transformer
+      // defined during initialisation.  Falls back to original code on error.
+      const transformProxy = await pyRef.current.runPythonAsync(
+        `_transform_input(${JSON.stringify(code)})`
+      )
+      const transformedCode = String(transformProxy)
+
       // Patch plt.show() to capture figures into _mpl_captured at call time.
       // Must run before user code so the patch is in place when show() is called.
       await pyRef.current.runPythonAsync(`
@@ -238,7 +327,7 @@ except ImportError:
     pass
 `)
 
-      await pyRef.current.runPythonAsync(code)
+      await pyRef.current.runPythonAsync(transformedCode)
 
       // Capture any figures left open (user created plots without calling plt.show()).
       // IMPORTANT: the return value must be a bare top-level expression — Pyodide only
@@ -314,6 +403,13 @@ _mpl_captured
     }
   }, []) // no dependency on `installing` — bypasses the single-install guard intentionally
 
+  const resolveInput = useCallback((value) => {
+    setInputRequest((req) => {
+      if (req) req.resolve(value ?? '')
+      return null
+    })
+  }, [])
+
   return {
     isLoaded,
     loadingMessage,
@@ -325,6 +421,8 @@ _mpl_captured
     installPackage,
     installPackages,
     installing,
+    inputRequest,
+    resolveInput,
   }
 }
 

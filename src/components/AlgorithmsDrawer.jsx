@@ -1,5 +1,5 @@
 /**
- * @file AlgorithmsDrawer.jsx - Sliding right-side drawer displaying algorithm teaching content.
+ * @file AlgorithmsDrawer.jsx - Sliding right-side drawer and full-detail algorithm modal.
  *
  * Content is drawn from "The Little Book of Algorithms 2.0" by William Lau,
  * used under Creative Commons BY-NC-SA 4.0.
@@ -12,90 +12,57 @@ import { ALGORITHMS, ALGORITHM_CATEGORIES } from '../utils/algorithms'
 
 /** Maps each category name to a distinctive colour. */
 const CATEGORY_COLOURS = {
-  'Selection':      '#3b82f6',
-  'Strings':        '#8b5cf6',
   'Maths':          '#06b6d4',
+  'Strings':        '#8b5cf6',
   'Iteration':      '#f97316',
+  'Selection':      '#3b82f6',
   'Lists':          '#22c55e',
-  'Files':          '#eab308',
-  'Number Systems': '#ec4899',
   'Searching':      '#64748b',
+  'Number Systems': '#ec4899',
+  'Files':          '#eab308',
 }
 
-/**
- * Collapsible card for a single challenge task.
- * @param {object}   props
- * @param {object}   props.challenge
- * @param {(code: string) => void} props.onLoadCode
- */
-function ChallengeCard({ challenge, onLoadCode }) {
-  const [expanded, setExpanded] = useState(false)
-
-  return (
-    <div className="challenge-card">
-      <button
-        className="challenge-header"
-        onClick={() => setExpanded((e) => !e)}
-        aria-expanded={expanded}
-      >
-        <span className="challenge-title">🎯 {challenge.title}</span>
-        <span className="challenge-toggle" aria-hidden="true">
-          {expanded ? '▲' : '▼'}
-        </span>
-      </button>
-
-      {expanded && (
-        <div className="challenge-body">
-          <p className="challenge-desc">{challenge.description}</p>
-          {challenge.code && (
-            <button
-              className="btn btn-load-starter"
-              onClick={() => onLoadCode(challenge.code)}
-            >
-              Load Starter Code →
-            </button>
-          )}
-        </div>
-      )}
-    </div>
-  )
-}
+// ── Detail modal ──────────────────────────────────────────────────────────────
 
 /**
- * Collapsible card for a single algorithm with teaching notes, example code, and challenges.
+ * Full-screen modal showing all content for a single algorithm.
  * @param {object}   props
  * @param {object}   props.algo
- * @param {boolean}  props.isExpanded
- * @param {() => void} props.onToggle
  * @param {(code: string) => void} props.onLoadCode
+ * @param {() => void} props.onClose
  */
-function AlgoCard({ algo, isExpanded, onToggle, onLoadCode }) {
+function AlgoDetailModal({ algo, onLoadCode, onClose }) {
   const colour = CATEGORY_COLOURS[algo.category] ?? '#64748b'
 
+  function loadAndClose(code) {
+    onLoadCode(code)
+    onClose()
+  }
+
   return (
-    <div className="algo-card">
-      <button
-        className="algo-header"
-        onClick={onToggle}
-        aria-expanded={isExpanded}
-      >
-        <span className="algo-title">{algo.title}</span>
-        <span className="algo-badge" style={{ background: colour }}>
-          {algo.category}
-        </span>
-        <span className="algo-toggle" aria-hidden="true">
-          {isExpanded ? '▲' : '▼'}
-        </span>
-      </button>
+    <div className="modal-overlay algo-detail-overlay" onClick={onClose}>
+      <div className="modal modal-algo-detail" onClick={(e) => e.stopPropagation()}>
 
-      {isExpanded && (
-        <div className="algo-body">
-          <p className="algo-desc">{algo.description}</p>
+        {/* Header */}
+        <div className="modal-header algo-detail-header">
+          <div className="algo-detail-title-group">
+            <span className="algo-badge" style={{ background: colour }}>
+              {algo.category}
+            </span>
+            <h2 className="algo-detail-title">{algo.title}</h2>
+          </div>
+          <button className="modal-close" onClick={onClose} aria-label="Close">✕</button>
+        </div>
 
+        {/* Content — modal itself scrolls via base .modal overflow-y:auto */}
+        <div className="algo-detail-content">
+          <p className="algo-detail-desc">{algo.description}</p>
+
+          {/* Teaching notes */}
           {algo.teachingNotes.length > 0 && (
-            <div className="teaching-notes">
-              <h4>Teaching Notes</h4>
-              <ul>
+            <div className="algo-detail-section">
+              <h3 className="algo-detail-section-heading">Teaching Notes</h3>
+              <ul className="algo-detail-notes">
                 {algo.teachingNotes.map((note, i) => (
                   <li key={i}>{note}</li>
                 ))}
@@ -103,12 +70,13 @@ function AlgoCard({ algo, isExpanded, onToggle, onLoadCode }) {
             </div>
           )}
 
-          <div className="algo-code-block">
-            <div className="code-block-header">
-              <span>Example Code</span>
+          {/* Example code */}
+          <div className="algo-detail-section">
+            <div className="algo-detail-code-header">
+              <h3 className="algo-detail-section-heading">Example Code</h3>
               <button
                 className="btn btn-load-code"
-                onClick={() => onLoadCode(algo.code)}
+                onClick={() => loadAndClose(algo.code)}
               >
                 Load into Editor →
               </button>
@@ -116,22 +84,79 @@ function AlgoCard({ algo, isExpanded, onToggle, onLoadCode }) {
             <pre className="algo-code">{algo.code}</pre>
           </div>
 
+          {/* Challenges */}
           {algo.challenges.length > 0 && (
-            <div className="algo-challenges">
-              <h4>Challenges</h4>
+            <div className="algo-detail-section">
+              <h3 className="algo-detail-section-heading">Challenges</h3>
               {algo.challenges.map((ch) => (
-                <ChallengeCard key={ch.id} challenge={ch} onLoadCode={onLoadCode} />
+                <div key={ch.id} className="algo-detail-challenge">
+                  <div className="algo-detail-challenge-header">
+                    <span className="challenge-title">🎯 {ch.title}</span>
+                    {ch.code && (
+                      <button
+                        className="btn btn-load-starter"
+                        onClick={() => loadAndClose(ch.code)}
+                      >
+                        Load Starter Code →
+                      </button>
+                    )}
+                  </div>
+                  <p className="challenge-desc">{ch.description}</p>
+                </div>
               ))}
             </div>
           )}
+
+          {/* Attribution */}
+          <footer className="algo-detail-footer">
+            Content from <em>The Little Book of Algorithms 2.0</em> by{' '}
+            <strong>William Lau</strong>, used under{' '}
+            <a
+              href="https://creativecommons.org/licenses/by-nc-sa/4.0/"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              CC BY-NC-SA 4.0
+            </a>.
+          </footer>
         </div>
-      )}
+      </div>
     </div>
   )
 }
 
+// ── List row ──────────────────────────────────────────────────────────────────
+
 /**
- * Right-side sliding drawer containing all algorithm content.
+ * Simple clickable row in the algorithm list.
+ * @param {object}   props
+ * @param {object}   props.algo
+ * @param {() => void} props.onSelect
+ */
+function AlgoListItem({ algo, onSelect }) {
+  const colour = CATEGORY_COLOURS[algo.category] ?? '#64748b'
+  return (
+    <div
+      className="algo-list-item"
+      onClick={onSelect}
+      onKeyDown={(e) => e.key === 'Enter' && onSelect()}
+      role="button"
+      tabIndex={0}
+      aria-label={`View ${algo.title}`}
+    >
+      <span className="algo-title">{algo.title}</span>
+      <span className="algo-badge" style={{ background: colour }}>
+        {algo.category}
+      </span>
+      <span className="algo-list-chevron" aria-hidden="true">›</span>
+    </div>
+  )
+}
+
+// ── Main drawer ───────────────────────────────────────────────────────────────
+
+/**
+ * Right-side sliding drawer containing the searchable algorithm index.
  * @param {object}   props
  * @param {boolean}  props.isOpen
  * @param {() => void} props.onClose
@@ -140,7 +165,7 @@ function AlgoCard({ algo, isExpanded, onToggle, onLoadCode }) {
 function AlgorithmsDrawer({ isOpen, onClose, onLoadCode }) {
   const [search, setSearch]               = useState('')
   const [activeCategory, setActiveCategory] = useState(null)
-  const [expandedId, setExpandedId]       = useState(null)
+  const [selectedAlgo, setSelectedAlgo]   = useState(null)
 
   const filtered = useMemo(() => {
     const q = search.toLowerCase()
@@ -160,10 +185,6 @@ function AlgorithmsDrawer({ isOpen, onClose, onLoadCode }) {
       })
   }, [search, activeCategory])
 
-  function toggleCard(id) {
-    setExpandedId((prev) => (prev === id ? null : id))
-  }
-
   function toggleCategory(cat) {
     setActiveCategory((prev) => (prev === cat ? null : cat))
   }
@@ -171,11 +192,7 @@ function AlgorithmsDrawer({ isOpen, onClose, onLoadCode }) {
   return (
     <>
       {isOpen && (
-        <div
-          className="drawer-backdrop"
-          onClick={onClose}
-          aria-hidden="true"
-        />
+        <div className="drawer-backdrop" onClick={onClose} aria-hidden="true" />
       )}
 
       <aside
@@ -183,17 +200,11 @@ function AlgorithmsDrawer({ isOpen, onClose, onLoadCode }) {
         aria-label="Algorithms reference drawer"
         aria-hidden={!isOpen}
       >
-        {/* ── Header ─────────────────────────────────────────── */}
+        {/* ── Header ── */}
         <div className="drawer-header">
           <div className="drawer-title-row">
             <h2>📚 Algorithms</h2>
-            <button
-              className="modal-close"
-              onClick={onClose}
-              aria-label="Close algorithms drawer"
-            >
-              ✕
-            </button>
+            <button className="modal-close" onClick={onClose} aria-label="Close drawer">✕</button>
           </div>
 
           <p className="drawer-subtitle">
@@ -234,28 +245,25 @@ function AlgorithmsDrawer({ isOpen, onClose, onLoadCode }) {
           </div>
         </div>
 
-        {/* ── Algorithm list ─────────────────────────────────── */}
+        {/* ── Algorithm list ── */}
         <div className="drawer-body">
           {filtered.length === 0 ? (
             <p className="drawer-empty">No algorithms match your search.</p>
           ) : (
             filtered.map((algo) => (
-              <AlgoCard
+              <AlgoListItem
                 key={algo.id}
                 algo={algo}
-                isExpanded={expandedId === algo.id}
-                onToggle={() => toggleCard(algo.id)}
-                onLoadCode={onLoadCode}
+                onSelect={() => setSelectedAlgo(algo)}
               />
             ))
           )}
         </div>
 
-        {/* ── Attribution footer ─────────────────────────────── */}
+        {/* ── Footer ── */}
         <footer className="drawer-footer">
           <p>
-            Content from{' '}
-            <strong>The Little Book of Algorithms 2.0</strong>{' '}
+            Content from <strong>The Little Book of Algorithms 2.0</strong>{' '}
             by <strong>William Lau</strong>, used under{' '}
             <a
               href="https://creativecommons.org/licenses/by-nc-sa/4.0/"
@@ -268,6 +276,15 @@ function AlgorithmsDrawer({ isOpen, onClose, onLoadCode }) {
           <p>Python Playground © 2026 Simon Rundell — CC BY-NC-SA 4.0</p>
         </footer>
       </aside>
+
+      {/* ── Detail modal (rendered outside the drawer so it overlays everything) ── */}
+      {selectedAlgo && (
+        <AlgoDetailModal
+          algo={selectedAlgo}
+          onLoadCode={onLoadCode}
+          onClose={() => setSelectedAlgo(null)}
+        />
+      )}
     </>
   )
 }

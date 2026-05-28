@@ -9,8 +9,9 @@ import MonacoEditor from '@monaco-editor/react'
  * @param {string}            props.value     - Current code string
  * @param {(v: string) => void} props.onChange - Called on every edit
  * @param {() => void}        props.onRun     - Called when Ctrl+Enter is pressed
+ * @param {string}            [props.language] - Monaco language id (default: 'python')
  */
-function CodeEditor({ value, onChange, onRun }) {
+function CodeEditor({ value, onChange, onRun, language = 'python' }) {
   function handleMount(editor, monaco) {
     // Ctrl+Enter triggers Run
     editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.Enter, onRun)
@@ -25,7 +26,7 @@ function CodeEditor({ value, onChange, onRun }) {
   return (
     <MonacoEditor
       height="100%"
-      language="python"
+      language={language}
       theme="vs-dark"
       value={value}
       onChange={(v) => onChange(v ?? '')}

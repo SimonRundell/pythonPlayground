@@ -9,8 +9,9 @@ import { useState, useEffect, useRef } from 'react'
  * @param {string}   props.initialName - Pre-filled filename.
  * @param {(name: string) => void} props.onSave - Called with the final filename.
  * @param {() => void} props.onClose - Called on cancel or backdrop click.
+ * @param {string}   [props.hint] - Optional explanatory note shown below the field.
  */
-function SaveAsModal({ initialName, onSave, onClose }) {
+function SaveAsModal({ initialName, onSave, onClose, hint = '' }) {
   const [name, setName] = useState(initialName)
   const inputRef = useRef(null)
 
@@ -25,9 +26,7 @@ function SaveAsModal({ initialName, onSave, onClose }) {
 
   function handleSubmit(e) {
     e.preventDefault()
-    const trimmed = name.trim() || initialName
-    const filename = trimmed.endsWith('.py') ? trimmed : `${trimmed}.py`
-    onSave(filename)
+    onSave(name.trim() || initialName)
   }
 
   function handleKeyDown(e) {
@@ -55,6 +54,8 @@ function SaveAsModal({ initialName, onSave, onClose }) {
               spellCheck={false}
             />
           </div>
+
+          {hint && <p className="save-as-hint">{hint}</p>}
 
           <div className="save-as-actions">
             <button type="button" className="btn btn-cancel" onClick={onClose}>

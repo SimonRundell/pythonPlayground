@@ -89,6 +89,81 @@ body {
   overflow: hidden;
 }
 
+/* ── File Tabs ─────────────────────────────────────────────────────────── */
+
+.file-tabs {
+  display: flex;
+  align-items: stretch;
+  background: #252526;
+  border-bottom: 1px solid #1a1a1a;
+  overflow-x: auto;
+  flex-shrink: 0;
+  scrollbar-width: none;
+}
+.file-tabs::-webkit-scrollbar { display: none; }
+
+.file-tab {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.3rem 0.75rem;
+  cursor: pointer;
+  border-right: 1px solid #1a1a1a;
+  color: #9d9d9d;
+  font-size: 0.8rem;
+  font-family: 'Trebuchet MS', sans-serif;
+  white-space: nowrap;
+  min-width: 0;
+  user-select: none;
+  transition: background 0.12s, color 0.12s;
+  max-width: 180px;
+}
+
+.file-tab:hover { background: #2d2d2d; color: #ccc; }
+
+.file-tab.active {
+  background: #1e1e1e;
+  color: #fff;
+  border-bottom: 2px solid var(--accent);
+}
+
+.file-tab-icon { font-size: 0.75rem; flex-shrink: 0; }
+
+.file-tab-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+
+.file-tab-close {
+  background: none;
+  border: none;
+  color: #666;
+  cursor: pointer;
+  font-size: 1rem;
+  line-height: 1;
+  padding: 0 0.1rem;
+  flex-shrink: 0;
+  border-radius: 3px;
+  transition: background 0.12s, color 0.12s;
+}
+.file-tab-close:hover { background: rgba(255,255,255,0.12); color: #fff; }
+
+.file-tab-add {
+  background: none;
+  border: none;
+  color: #777;
+  cursor: pointer;
+  font-size: 1.1rem;
+  padding: 0 0.65rem;
+  flex-shrink: 0;
+  transition: background 0.12s, color 0.12s;
+  align-self: stretch;
+  display: flex;
+  align-items: center;
+}
+.file-tab-add:hover { background: #2d2d2d; color: #fff; }
+
 .output-pane {
   flex: 1;
   min-width: 0;
@@ -324,8 +399,17 @@ body {
 
 /* ── Save As Modal ─────────────────────────────────────────────────────── */
 
-.modal-save-as {
-  width: min(380px, 92vw);
+.modal-save-as,
+.modal-input {
+  width: min(420px, 92vw);
+}
+
+.input-modal-prompt {
+  font-size: 0.95rem;
+  color: #24292f;
+  font-family: 'Courier New', monospace;
+  white-space: pre-wrap;
+  word-break: break-word;
 }
 
 .save-as-field {
@@ -365,6 +449,14 @@ body {
   display: flex;
   justify-content: flex-end;
   gap: 0.5rem;
+}
+
+.save-as-hint {
+  font-size: 0.78rem;
+  color: #888;
+  font-style: italic;
+  margin-top: -0.5rem;
+  margin-bottom: 0.75rem;
 }
 
 .btn-cancel {
@@ -644,36 +736,30 @@ body {
   font-size: 0.9rem;
 }
 
-/* Algorithm card */
-.algo-card {
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  overflow: hidden;
-  background: #fafbfc;
-}
-
-.algo-header {
-  width: 100%;
+/* Algorithm list items (drawer index) */
+.algo-list-item {
   display: flex;
   align-items: center;
   gap: 0.6rem;
-  padding: 0.65rem 0.75rem;
-  background: none;
-  border: none;
+  padding: 0.6rem 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: #fafbfc;
   cursor: pointer;
-  text-align: left;
-  font-family: 'Trebuchet MS', sans-serif;
-  transition: background 0.12s;
+  transition: background 0.12s, border-color 0.12s;
+  user-select: none;
 }
 
-.algo-header:hover { background: var(--surface); }
+.algo-list-item:hover {
+  background: #fff;
+  border-color: var(--header-bg);
+}
 
 .algo-title {
   flex: 1;
   font-weight: 700;
   font-size: 0.9rem;
   color: #24292f;
-  text-align: left;
 }
 
 .algo-badge {
@@ -688,162 +774,179 @@ body {
   white-space: nowrap;
 }
 
-.algo-toggle { font-size: 0.65rem; color: #888; flex-shrink: 0; }
+.algo-list-chevron {
+  font-size: 1.2rem;
+  color: #aaa;
+  flex-shrink: 0;
+  line-height: 1;
+}
 
-.algo-body {
-  padding: 0.75rem;
-  border-top: 1px solid var(--border);
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
-  background: #fff;
-  max-height: 68vh;
+/* Algorithm detail modal */
+.algo-detail-overlay { z-index: 1100; }
+
+.modal-algo-detail {
+  width: min(740px, 96vw);
+  max-height: 92vh;
+  padding: 0;
   overflow-y: auto;
 }
 
-.algo-desc {
-  font-size: 0.875rem;
-  color: #444;
-  line-height: 1.5;
+.algo-detail-header {
+  padding: 1.1rem 1.25rem 0.85rem;
+  border-bottom: 1px solid var(--border);
+  align-items: flex-start;
+  position: sticky;
+  top: 0;
+  background: #fff;
+  z-index: 1;
 }
 
-/* Teaching notes */
-.teaching-notes h4,
-.algo-challenges h4 {
-  font-size: 0.75rem;
-  text-transform: uppercase;
-  letter-spacing: 0.07em;
-  color: #57606a;
-  margin-bottom: 0.35rem;
+.algo-detail-title-group {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  flex: 1;
+  min-width: 0;
 }
 
-.teaching-notes ul {
-  padding-left: 1.1rem;
+.algo-detail-title {
+  font-size: 1.15rem;
+  color: var(--header-bg);
+  font-weight: 700;
+  line-height: 1.25;
+}
+
+.algo-detail-content {
+  padding: 1.1rem 1.25rem;
   display: flex;
   flex-direction: column;
-  gap: 0.25rem;
+  gap: 1.1rem;
 }
 
-.teaching-notes li {
-  font-size: 0.82rem;
+.algo-detail-desc {
+  font-size: 0.9rem;
   color: #444;
-  line-height: 1.5;
+  line-height: 1.6;
 }
 
-/* Code block inside drawer */
-.algo-code-block {
-  border: 1px solid var(--border);
-  border-radius: 4px;
-  overflow: hidden;
-}
-
-.code-block-header {
+.algo-detail-section {
   display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 0.35rem 0.6rem;
-  background: #eaecef;
-  font-size: 0.75rem;
-  font-weight: 600;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.algo-detail-section-heading {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
   color: #57606a;
+  font-weight: 700;
+}
+
+.algo-detail-notes {
+  padding-left: 1.2rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.algo-detail-notes li {
+  font-size: 0.875rem;
+  color: #333;
+  line-height: 1.55;
+}
+
+.algo-detail-code-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
 }
 
 .algo-code {
   background: var(--console-bg);
   color: var(--console-fg);
   font-family: 'Courier New', Courier, monospace;
-  font-size: 12px;
-  line-height: 1.5;
-  padding: 0.6rem 0.75rem;
+  font-size: 12.5px;
+  line-height: 1.55;
+  padding: 0.75rem 1rem;
   overflow-x: auto;
   white-space: pre;
   margin: 0;
+  border-radius: 4px;
 }
 
 .btn-load-code {
-  padding: 0.2rem 0.6rem;
+  padding: 0.3rem 0.75rem;
   background: var(--header-bg);
   color: #fff;
   border: none;
   border-radius: 4px;
   cursor: pointer;
-  font-size: 0.75rem;
+  font-size: 0.8rem;
   font-family: 'Trebuchet MS', sans-serif;
   font-weight: 600;
   white-space: nowrap;
+  flex-shrink: 0;
   transition: background 0.15s;
 }
-
 .btn-load-code:hover { background: #145086; }
 
-/* Challenge cards */
-.algo-challenges {
+/* Challenge rows inside detail modal */
+.algo-detail-challenge {
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  padding: 0.75rem 0.9rem;
+  background: #f8fafc;
   display: flex;
   flex-direction: column;
-  gap: 0.35rem;
+  gap: 0.45rem;
 }
 
-.challenge-card {
-  border: 1px solid #e2e8f0;
-  border-radius: 4px;
-  overflow: hidden;
-  background: #f8fafc;
-}
-
-.challenge-header {
-  width: 100%;
+.algo-detail-challenge-header {
   display: flex;
-  justify-content: space-between;
   align-items: center;
-  padding: 0.45rem 0.65rem;
-  background: none;
-  border: none;
-  cursor: pointer;
-  font-family: 'Trebuchet MS', sans-serif;
-  text-align: left;
-  transition: background 0.12s;
+  justify-content: space-between;
+  gap: 0.5rem;
 }
-
-.challenge-header:hover { background: #f0f4f8; }
 
 .challenge-title {
-  font-size: 0.84rem;
+  font-size: 0.875rem;
   font-weight: 700;
   color: #24292f;
 }
 
-.challenge-toggle { font-size: 0.65rem; color: #888; }
-
-.challenge-body {
-  padding: 0.6rem 0.65rem;
-  border-top: 1px solid #e2e8f0;
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-  background: #fff;
-}
-
 .challenge-desc {
-  font-size: 0.82rem;
-  color: #444;
+  font-size: 0.84rem;
+  color: #555;
   line-height: 1.5;
 }
 
 .btn-load-starter {
-  align-self: flex-start;
-  padding: 0.22rem 0.65rem;
+  padding: 0.25rem 0.7rem;
   background: var(--accent);
   color: #1a1a1a;
   border: none;
   border-radius: 4px;
   cursor: pointer;
-  font-size: 0.75rem;
+  font-size: 0.78rem;
   font-family: 'Trebuchet MS', sans-serif;
   font-weight: 600;
+  white-space: nowrap;
+  flex-shrink: 0;
   transition: background 0.15s;
 }
-
 .btn-load-starter:hover { background: var(--accent-hover); }
+
+/* Detail modal attribution footer */
+.algo-detail-footer {
+  font-size: 0.75rem;
+  color: #888;
+  line-height: 1.5;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--border);
+  margin-top: 0.5rem;
+}
 
 /* Drawer footer */
 .drawer-footer {

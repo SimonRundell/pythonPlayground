@@ -10,15 +10,17 @@ A browser-based Python IDE that runs entirely client-side — no server, no inst
 |---|---|
 | **Monaco Editor** | VS Code-quality editor with Python syntax highlighting, bracket colouring, and autocompletion |
 | **Pyodide (CPython in WASM)** | Full CPython 3.x interpreter compiled to WebAssembly — code runs in the browser tab |
+| **Multi-file Workspace** | VS Code-style file tabs; add `.py`, `.csv`, and `.json` files alongside the main script |
+| **ZIP Load / Save** | Load a ZIP to restore a full project; Save bundles all workspace files into a ZIP automatically |
+| **Module & Data File Support** | All workspace files are written to `/workspace/` before each run — `import helpers` and `open('data.csv')` work out of the box |
 | **Turtle Graphics** | Custom canvas-based turtle backend; `import turtle` works out of the box |
 | **Matplotlib** | Charts rendered to PNG and displayed in the Graphics tab after `plt.show()` |
 | **Package Manager** | One-click install of scientific packages (NumPy, Pandas, SciPy, scikit-learn, and more) via micropip |
 | **Auto-install on Load** | Opening a `.py` file automatically detects and installs any required curated packages |
-| **File Load / Save As** | Open `.py` files from the local filesystem; Save prompts for a filename each time |
-| **`input()` support** | `input()` uses the browser's native `prompt()` dialog |
+| **`input()` modal** | Python's `input()` opens a styled modal dialog; no native browser prompt |
 | **Tabbed output** | Separate Console and Graphics tabs; auto-switches to Graphics when turtle or matplotlib output is produced |
-| **Algorithms Drawer** | Sliding reference panel of teaching examples and challenges from *The Little Book of Algorithms 2.0* by William Lau (CC BY-NC-SA 4.0) |
-| **Playground Reset** | One-click reset restores the Hello World starter and fully reinitialises the Python environment, removing all installed packages |
+| **Algorithms Drawer** | Sliding reference panel with searchable index and full-detail modal for each algorithm, from *The Little Book of Algorithms 2.0* by William Lau (CC BY-NC-SA 4.0) |
+| **Playground Reset** | One-click reset clears all workspace files, restores Hello World, and fully reinitialises the Python environment |
 
 ---
 
@@ -27,6 +29,7 @@ A browser-based Python IDE that runs entirely client-side — no server, no inst
 - [React 19](https://react.dev/) + [Vite 8](https://vite.dev/) — UI framework and build tool
 - [@monaco-editor/react](https://github.com/suren-atoyan/monaco-react) — Monaco Editor integration
 - [Pyodide 0.26.4](https://pyodide.org/) — CPython compiled to WebAssembly (loaded from CDN)
+- [JSZip](https://stuk.github.io/jszip/) — ZIP archive creation and extraction
 - HTML5 Canvas API — Turtle graphics rendering
 
 ---
@@ -104,10 +107,31 @@ The chart is rendered to PNG and shown in the **Graphics** tab.  Install Matplot
 
 Click **📦 Packages** in the toolbar and select the packages your program needs.  Packages are downloaded once per browser session.  When a `.py` file is loaded from disk, any recognised imports are installed automatically.
 
-### Loading and Saving Files
+### Multi-file Workspace
 
-- **📂 Load** — opens a file picker; any curated packages required by the file are installed automatically before you run.
-- **💾 Save** — opens a Save As dialog pre-filled with the current filename.  The `.py` extension is added automatically if omitted.
+The editor supports multiple files simultaneously via a VS Code-style tab bar directly above the editor:
+
+- **`+` button** — opens a file picker to add a `.py`, `.csv`, or `.json` file to the workspace without replacing existing files.
+- **📂 Load** — loads a single file or a ZIP archive.  A ZIP unpacks all its text files into the workspace at once.
+- **💾 Save** — with one file open saves as `.py`; with multiple files open prompts for a project name and downloads a `.zip` containing every workspace file.
+- **Closing a tab** — click the `×` on any tab to remove that file from the workspace (only available when two or more files are open).
+
+All workspace files are written to `/workspace/` in Pyodide's virtual filesystem before each run and the working directory is set to `/workspace/`.  This means:
+
+```python
+# Import another .py file from the workspace
+import helpers          # if helpers.py is open in a tab
+
+# Read a CSV or JSON data file from the workspace
+import pandas as pd
+df = pd.read_csv('students.csv')   # if students.csv is open in a tab
+```
+
+Any curated packages required by loaded `.py` files are installed automatically.
+
+### `input()` Dialog
+
+Python's `input()` opens a styled modal dialog pre-filled with the prompt text from your program.  Type a value and press **OK** (or Enter) to continue; **Cancel** returns an empty string.  Standard Python code works unchanged — no `await` keywords required in student scripts.
 
 ### Algorithms Reference
 
@@ -129,22 +153,24 @@ Click **🔄 Reset** to restore the Hello World starter code and fully reinitial
 
 ```
 src/
-  App.jsx                  # Root component — layout and state wiring
+  App.jsx                  # Root component — layout, workspace state, and modal wiring
   App.css                  # Application styles
   components/
     Toolbar.jsx            # Run / Load / Save / Packages / Reset / Algorithms bar
-    CodeEditor.jsx         # Monaco editor wrapper
+    FileTabs.jsx           # VS Code-style workspace file tab bar
+    CodeEditor.jsx         # Monaco editor wrapper (language-aware)
     OutputPanel.jsx        # Tabbed Console + Graphics output panel
     LibraryManager.jsx     # Package installation modal
-    SaveAsModal.jsx        # Save As filename dialog
+    SaveAsModal.jsx        # Save As filename dialog (single file or ZIP)
     ConfirmModal.jsx       # Generic confirmation dialog (used by Reset)
-    AlgorithmsDrawer.jsx   # Sliding algorithms reference panel
+    InputModal.jsx         # Modal dialog for Python input() calls
+    AlgorithmsDrawer.jsx   # Algorithms index drawer + full detail modal
     cmFloatAd.jsx          # College branding component
   hooks/
     usePyodide.js          # React hook managing the Pyodide instance
   utils/
     turtleApi.js           # Canvas-based turtle graphics backend
-    fileHandling.js        # File load / save helpers
+    fileHandling.js        # Multi-file load / ZIP save helpers (JSZip)
     packages.js            # Curated package list + auto-detect helpers
     algorithms.js          # Algorithm data (William Lau CC BY-NC-SA 4.0)
 public/
@@ -162,6 +188,8 @@ public/
     test_networkx.py       # NetworkX test
     test_pillow.py         # Pillow image processing test
     test_openpyxl.py       # OpenPyXL in-memory workbook test
+    demo_csv_pandas.py     # Multi-file workspace demo — reads students.csv with Pandas
+    students.csv           # Sample dataset used by demo_csv_pandas.py
 ```
 
 ---
@@ -203,7 +231,7 @@ The return value from Pyodide's `runPythonAsync` is only captured when the **las
 
 Additional packages can be installed via `micropip` if not listed above.
 
-> **Note — file I/O:** Python's `open()` cannot access the real filesystem in a browser-based Pyodide environment.  OpenPyXL scripts should use `io.BytesIO` for in-memory workbooks.  Similarly, Pillow images should be displayed via Matplotlib rather than saved to disk.
+> **File I/O in the workspace:** Upload `.csv` or `.json` files using the `+` tab button.  They are written to `/workspace/` before each run, so `open('data.csv')` works without any path prefix.  OpenPyXL scripts that need to create `.xlsx` files should use `io.BytesIO` for in-memory workbooks rather than writing to disk.  Pillow images should be displayed via Matplotlib rather than saved to disk.
 
 ---
 
@@ -218,6 +246,23 @@ Uses ESLint with the `eslint-plugin-react-hooks` and `eslint-plugin-react-refres
 ---
 
 ## Changelog
+
+### v0.0.3 — 2026-05-28
+
+**New features**
+
+- **Multi-file workspace** — VS Code-style file tab bar above the editor.  Students can open multiple `.py`, `.csv`, and `.json` files simultaneously.  The `+` button adds a file without replacing the current workspace; individual tabs can be closed when no longer needed.
+- **ZIP load / save** — loading a `.zip` file unpacks all text files into the workspace in one step.  Saving with multiple files open prompts for a project name and downloads a single `.zip` archive containing every workspace file (powered by JSZip).
+- **Module and data file support** — all workspace files are written to `/workspace/` in Pyodide's MEMFS before each run; `/workspace/` is added to `sys.path` and set as the working directory.  Students can write `import helpers` or `open('data.csv')` using standard Python syntax with no extra setup.
+- **`input()` modal** — Python's `input()` now opens a styled React modal dialog instead of the browser's native `window.prompt()`.  An AST transformer automatically rewrites `input(...)` calls to `await input(...)` in user code, and promotes any student-defined function containing an `input()` call to `async def`, so standard Python code works unchanged.
+- **Algorithms drawer redesign** — replaced the accordion pattern with a master-detail layout: the drawer shows a compact searchable index; clicking any entry opens a full-width modal displaying the complete description, teaching notes, example code, and all challenges without any hidden scrolling.
+- **Demo scripts** — `demo_csv_pandas.py` and `students.csv` added to `public/scripts/` demonstrating the multi-file workspace with a full Pandas analysis and Matplotlib visualisation.
+
+**Changes**
+
+- `SaveAsModal` no longer forces a `.py` extension — extension handling moved to `App.jsx` so both `.py` (single file) and `.zip` (multi-file) cases are handled correctly.
+- `CodeEditor` accepts a `language` prop so `.json` and plain-text files render with appropriate Monaco syntax highlighting.
+- Reset now clears all workspace files in addition to reinstalling Pyodide and removing packages.
 
 ### v0.0.2 — 2026-05-28
 
