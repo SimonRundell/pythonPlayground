@@ -58,8 +58,9 @@ async function getPyodide(onProgress) {
 /**
  * Hook for the Python interpreter.
  * @param {React.RefObject<HTMLCanvasElement>} turtleCanvasRef
+ * @param {number} resetKey - Increment to destroy and re-create the Pyodide instance.
  */
-function usePyodide(turtleCanvasRef) {
+function usePyodide(turtleCanvasRef, resetKey = 0) {
   const [isLoaded, setIsLoaded] = useState(false)
   const [loadingMessage, setLoadingMessage] = useState('Initialising…')
   const [isRunning, setIsRunning] = useState(false)
@@ -75,6 +76,18 @@ function usePyodide(turtleCanvasRef) {
 
   // ── Initialisation ──────────────────────────────────────────────────────────
   useEffect(() => {
+    // When resetKey > 0 the caller wants a clean slate — destroy the cached
+    // Pyodide instance so getPyodide() creates a fresh one without any
+    // previously-installed packages.
+    if (resetKey > 0) {
+      window._pyodidePromise = null
+      pyRef.current = null
+      setIsLoaded(false)
+      setOutput([])
+      setInstalledPackages(new Set())
+      setLoadingMessage('Reinitialising…')
+    }
+
     let mounted = true
 
     async function init() {
@@ -115,6 +128,10 @@ function usePyodide(turtleCanvasRef) {
         // `from js import _py_stdout` (snapshot at import time) so that
         // replacing window._py_stdout on HMR reloads is picked up automatically.
         await py.runPythonAsync(`
+import os, warnings
+os.environ['MPLBACKEND'] = 'Agg'
+warnings.filterwarnings('ignore', message='Matplotlib is currently using agg')
+
 import sys, builtins, js as _js
 
 class _Capture:
@@ -140,12 +157,6 @@ def _py_input(prompt=''):
     return '' if result is None else str(result)
 builtins.input = _py_input
 
-# Pre-configure matplotlib backend so plt.show() saves to buffer silently
-try:
-    import matplotlib
-    matplotlib.use('Agg')
-except Exception:
-    pass
 `)
         if (!mounted) return
 
@@ -189,7 +200,7 @@ if '/pyodide_modules' not in sys.path:
 
     init()
     return () => { mounted = false }
-  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [resetKey]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Re-init turtle canvas when the ref becomes available after first load
   useEffect(() => {
@@ -207,23 +218,44 @@ if '/pyodide_modules' not in sys.path:
     if (window._turtle_reset) window._turtle_reset()
 
     try {
+      // Patch plt.show() to capture figures into _mpl_captured at call time.
+      // Must run before user code so the patch is in place when show() is called.
+      await pyRef.current.runPythonAsync(`
+_mpl_captured = []
+try:
+    import matplotlib
+    matplotlib.use('agg')
+    import matplotlib.pyplot as _plt, io as _io, base64 as _b64
+    def _show_capture(*_a, **_kw):
+        for _fn in list(_plt.get_fignums()):
+            _buf = _io.BytesIO()
+            _plt.figure(_fn).savefig(_buf, format='png', bbox_inches='tight', dpi=100)
+            _buf.seek(0)
+            _mpl_captured.append(_b64.b64encode(_buf.getvalue()).decode())
+        _plt.close('all')
+    _plt.show = _show_capture
+except ImportError:
+    pass
+`)
+
       await pyRef.current.runPythonAsync(code)
 
-      // Harvest any matplotlib figures produced by the run
+      // Capture any figures left open (user created plots without calling plt.show()).
+      // IMPORTANT: the return value must be a bare top-level expression — Pyodide only
+      // captures the result when the last statement in the code string is an ast.Expr,
+      // not a try/except block.
       const mplProxy = await pyRef.current.runPythonAsync(`
 try:
-    import io, base64
-    import matplotlib.pyplot as plt
-    _imgs = []
-    for _fn in plt.get_fignums():
-        _buf = io.BytesIO()
-        plt.figure(_fn).savefig(_buf, format='png', bbox_inches='tight', dpi=100)
+    import matplotlib.pyplot as _plt, io as _io, base64 as _b64
+    for _fn in list(_plt.get_fignums()):
+        _buf = _io.BytesIO()
+        _plt.figure(_fn).savefig(_buf, format='png', bbox_inches='tight', dpi=100)
         _buf.seek(0)
-        _imgs.append(base64.b64encode(_buf.getvalue()).decode('utf-8'))
-    plt.close('all')
-    _imgs
+        _mpl_captured.append(_b64.b64encode(_buf.getvalue()).decode())
+    _plt.close('all')
 except Exception:
-    []
+    pass
+_mpl_captured
 `)
       const imgs = mplProxy?.toJs?.() ?? []
       imgs.forEach((img) => runBuffer.current.push({ type: 'image', content: img }))
@@ -259,6 +291,29 @@ except Exception:
     }
   }, [installing])
 
+  // ── Bulk sequential installation (used for auto-install on file load) ─────
+  const installPackages = useCallback(async (packageIds) => {
+    if (!pyRef.current || !packageIds.length) return
+    for (const id of packageIds) {
+      setInstalling(id)
+      try {
+        await pyRef.current.loadPackage(id)
+        setInstalledPackages((prev) => new Set([...prev, id]))
+      } catch (_) {
+        try {
+          await pyRef.current.runPythonAsync(
+            `import micropip; await micropip.install('${id}')`
+          )
+          setInstalledPackages((prev) => new Set([...prev, id]))
+        } catch (err) {
+          console.warn(`Auto-install of ${id} failed:`, err.message)
+        }
+      } finally {
+        setInstalling(null)
+      }
+    }
+  }, []) // no dependency on `installing` — bypasses the single-install guard intentionally
+
   return {
     isLoaded,
     loadingMessage,
@@ -268,6 +323,7 @@ except Exception:
     runCode,
     installedPackages,
     installPackage,
+    installPackages,
     installing,
   }
 }

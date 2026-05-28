@@ -279,7 +279,15 @@ def distance(x, y=None):
         x, y = x[0], x[1]
     return math.hypot(x - _x, y - _y)
 
-# ── Canvas ───────────────────────────────────────────────────────────────────
+# ── Canvas / Screen dimensions ───────────────────────────────────────────────
+
+def window_width():
+    """Return the canvas width in pixels (equivalent to Screen().window_width())."""
+    return js._turtle_canvas_width()
+
+def window_height():
+    """Return the canvas height in pixels (equivalent to Screen().window_height())."""
+    return js._turtle_canvas_height()
 
 def bgcolor(col):
     """Set the background colour of the canvas."""
@@ -381,6 +389,10 @@ class _Screen:
         pass
     def onkeyrelease(self, *args, **kwargs):
         pass
+    def window_width(self):
+        return window_width()
+    def window_height(self):
+        return window_height()
 
 def Screen():
     """Return a Screen-compatible object."""

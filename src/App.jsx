@@ -13,9 +13,12 @@ import Toolbar from './components/Toolbar'
 import CodeEditor from './components/CodeEditor'
 import OutputPanel from './components/OutputPanel'
 import LibraryManager from './components/LibraryManager'
+import SaveAsModal from './components/SaveAsModal'
+import ConfirmModal from './components/ConfirmModal'
 import AlgorithmsDrawer from './components/AlgorithmsDrawer'
 import usePyodide from './hooks/usePyodide'
 import { loadFile, saveFile } from './utils/fileHandling'
+import { detectMissingPackages } from './utils/packages'
 import CMFloatAd from './components/cmFloatAd'
 
 const DEFAULT_CODE = `# Python Playground
@@ -37,6 +40,9 @@ function App() {
   const [code, setCode] = useState(DEFAULT_CODE)
   const [showPackages, setShowPackages] = useState(false)
   const [showAlgorithms, setShowAlgorithms] = useState(false)
+  const [showSaveAs, setShowSaveAs] = useState(false)
+  const [showReset, setShowReset] = useState(false)
+  const [resetKey, setResetKey] = useState(0)
   const [currentFilename, setCurrentFilename] = useState('script.py')
 
   const turtleCanvasRef = useRef(null)
@@ -50,8 +56,9 @@ function App() {
     runCode,
     installedPackages,
     installPackage,
+    installPackages,
     installing,
-  } = usePyodide(turtleCanvasRef)
+  } = usePyodide(turtleCanvasRef, resetKey)
 
   const handleRun = useCallback(() => {
     runCode(code)
@@ -62,12 +69,26 @@ function App() {
     if (content !== null) {
       setCode(content)
       if (filename) setCurrentFilename(filename)
+      const missing = detectMissingPackages(content, installedPackages)
+      if (missing.length) installPackages(missing)
     }
-  }, [])
+  }, [installedPackages, installPackages])
 
   const handleSave = useCallback(() => {
-    saveFile(code, currentFilename)
-  }, [code, currentFilename])
+    setShowSaveAs(true)
+  }, [])
+
+  const handleSaveConfirm = useCallback((filename) => {
+    setCurrentFilename(filename)
+    setShowSaveAs(false)
+    saveFile(code, filename)
+  }, [code])
+
+  const handleReset = useCallback(() => {
+    setCode(DEFAULT_CODE)
+    setCurrentFilename('script.py')
+    setResetKey((k) => k + 1)
+  }, [])
 
   const handleLoadAlgorithmCode = useCallback((algorithmCode) => {
     setCode(algorithmCode)
@@ -86,7 +107,9 @@ function App() {
           onSave={handleSave}
           onPackages={() => setShowPackages(true)}
           onAlgorithms={() => setShowAlgorithms(true)}
+          onReset={() => setShowReset(true)}
           isRunning={isRunning}
+          installing={installing}
           pyodideLoaded={isLoaded}
           loadingMessage={loadingMessage}
         />
@@ -104,6 +127,25 @@ function App() {
           />
         </div>
       </main>
+
+      {showReset && (
+        <ConfirmModal
+          title="🔄 Reset Playground"
+          message="This will restore the Hello World starter code and uninstall all packages. The Python environment will reinitialise — this takes a few seconds."
+          confirmLabel="Reset"
+          confirmClass="btn-danger"
+          onConfirm={handleReset}
+          onClose={() => setShowReset(false)}
+        />
+      )}
+
+      {showSaveAs && (
+        <SaveAsModal
+          initialName={currentFilename}
+          onSave={handleSaveConfirm}
+          onClose={() => setShowSaveAs(false)}
+        />
+      )}
 
       {showPackages && (
         <LibraryManager

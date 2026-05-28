@@ -144,6 +144,16 @@ body {
 }
 .btn-packages:hover { background: var(--accent-hover); }
 
+.btn-reset {
+  background: rgba(231, 76, 60, 0.15);
+  color: #ffc8c2;
+  border: 1px solid rgba(231, 76, 60, 0.4);
+}
+.btn-reset:not(:disabled):hover {
+  background: rgba(231, 76, 60, 0.35);
+  color: #fff;
+}
+
 .loading-message {
   color: rgba(255,255,255,0.75);
   font-size: 0.8rem;
@@ -286,6 +296,83 @@ body {
   max-width: 100%;
   height: auto;
 }
+
+/* ── Confirm Modal ─────────────────────────────────────────────────────── */
+
+.modal-confirm {
+  width: min(400px, 92vw);
+}
+
+.confirm-message {
+  font-size: 0.9rem;
+  color: #444;
+  line-height: 1.6;
+  margin-bottom: 1.5rem;
+}
+
+.confirm-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+}
+
+.btn-danger {
+  background: var(--danger);
+  color: #fff;
+}
+.btn-danger:hover { background: #c0392b; }
+
+/* ── Save As Modal ─────────────────────────────────────────────────────── */
+
+.modal-save-as {
+  width: min(380px, 92vw);
+}
+
+.save-as-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  margin-bottom: 1.25rem;
+}
+
+.save-as-field label {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #57606a;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.save-as-input {
+  width: 100%;
+  padding: 0.45rem 0.65rem;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  font-family: 'Courier New', monospace;
+  font-size: 0.95rem;
+  color: #24292f;
+  background: #fff;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.save-as-input:focus {
+  outline: none;
+  border-color: var(--header-bg);
+  box-shadow: 0 0 0 3px rgba(26, 58, 92, 0.15);
+}
+
+.save-as-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+}
+
+.btn-cancel {
+  background: var(--surface);
+  color: #24292f;
+  border: 1px solid var(--border);
+}
+.btn-cancel:hover { background: #eaecef; }
 
 /* ── Library Manager Modal ─────────────────────────────────────────────── */
 
@@ -784,6 +871,7 @@ body {
   background: #6d28d9;
   color: #fff;
   border: none;
+  margin-left: 200px;
 }
 
 .btn-algorithms:hover { background: #5b21b6; }

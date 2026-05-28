@@ -72,14 +72,43 @@ export const CURATED_PACKAGES = [
     category: 'Science',
     pyodide: true,
   },
-  {
-    id: 'bokeh',
-    name: 'Bokeh',
-    description: 'Interactive web charts',
-    category: 'Science',
-    pyodide: true,
-  },
 ]
 
 /** Categories in display order. */
 export const CATEGORIES = ['Science', 'Maths', 'Data', 'Media']
+
+/**
+ * Maps Python import-level names to curated package IDs.
+ * Covers both `import X` and `from X import …` top-level names.
+ */
+export const IMPORT_TO_PACKAGE_ID = {
+  numpy:      'numpy',
+  pandas:     'pandas',
+  matplotlib: 'matplotlib',
+  scipy:      'scipy',
+  sklearn:    'scikit-learn',
+  sympy:      'sympy',
+  PIL:        'pillow',
+  openpyxl:   'openpyxl',
+  networkx:   'networkx',
+}
+
+/**
+ * Scan Python source for import statements and return the IDs of curated
+ * packages that are referenced but not yet installed.
+ *
+ * @param {string}      code             - Python source code
+ * @param {Set<string>} installedPackages - currently installed package IDs
+ * @returns {string[]} package IDs that need to be installed
+ */
+export function detectMissingPackages(code, installedPackages) {
+  const re = /^[ \t]*(?:import[ \t]+([\w.]+)|from[ \t]+([\w.]+)[ \t]+import)/gm
+  const topLevelNames = new Set()
+  let m
+  while ((m = re.exec(code)) !== null) {
+    topLevelNames.add((m[1] || m[2]).split('.')[0])
+  }
+  return [...topLevelNames]
+    .map((name) => IMPORT_TO_PACKAGE_ID[name])
+    .filter((id) => id !== undefined && !installedPackages.has(id))
+}

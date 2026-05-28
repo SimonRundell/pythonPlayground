@@ -80,8 +80,8 @@ function OutputPanel({ output, onClear, turtleCanvasRef }) {
 
       {/* ── Graphics ── */}
       <div className={`tab-content graphics-tab ${activeTab === 'graphics' ? 'visible' : 'hidden'}`}>
-        {/* Turtle canvas – always present so the ref stays stable */}
-        <div className="turtle-wrapper">
+        {/* Canvas stays in DOM so the ref is always valid; wrapper hidden when unused */}
+        <div className="turtle-wrapper" style={{ display: turtleUsed ? 'inline-block' : 'none' }}>
           <canvas
             ref={turtleCanvasRef}
             width={800}
