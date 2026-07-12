@@ -247,6 +247,12 @@ Uses ESLint with the `eslint-plugin-react-hooks` and `eslint-plugin-react-refres
 
 ## Changelog
 
+### v0.0.4 — 2026-07-12
+
+**Bug fixes**
+
+- **Files written by student code now show up in the editor** — `runCode` synced workspace files into Pyodide's virtual filesystem before each run, but never read them back afterwards, so `open('file.txt', 'w').write(...)` succeeded inside the sandbox while the editor kept showing the stale pre-run content. `usePyodide.js` now reads `/workspace/` back out of the virtual FS after every run and `App.jsx` merges the result into workspace state, so writes (and brand-new files created by a script) appear immediately, including their own file tab.
+
 ### v0.0.3 — 2026-05-28
 
 **New features**

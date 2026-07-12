@@ -78,8 +78,13 @@ function App() {
   }, [activeFile])
 
   // ── Run ─────────────────────────────────────────────────────────────────────
-  const handleRun = useCallback(() => {
-    runCode(activeCode, files)
+  const handleRun = useCallback(async () => {
+    const updated = await runCode(activeCode, files)
+    // Pull back any files the script wrote to (or created) so the editor
+    // reflects changes made via open(...).write(...) during the run.
+    if (updated && Object.keys(updated).length) {
+      setFiles((prev) => ({ ...prev, ...updated }))
+    }
   }, [activeCode, files, runCode])
 
   // ── File tab management ─────────────────────────────────────────────────────

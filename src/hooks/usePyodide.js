@@ -282,6 +282,7 @@ if '/pyodide_modules' not in sys.path:
     setIsRunning(true)
     runBuffer.current = []
     if (window._turtle_reset) window._turtle_reset()
+    let updatedFiles = {}
 
     // Sync all workspace files to Pyodide's /workspace/ directory
     if (workspaceFiles) {
@@ -352,9 +353,28 @@ _mpl_captured
     } catch (err) {
       runBuffer.current.push({ type: 'error', content: err.message })
     } finally {
+      // Read /workspace/ back out of the virtual FS so any files the script
+      // wrote to (or created) via open()/write() are reflected in the editor —
+      // the sync above only goes state -> sandbox, this closes the loop.
+      try {
+        const entries = pyRef.current.FS.readdir('/workspace')
+        for (const name of entries) {
+          if (name === '.' || name === '..') continue
+          const path = `/workspace/${name}`
+          try {
+            const stat = pyRef.current.FS.stat(path)
+            if (pyRef.current.FS.isDir(stat.mode)) continue
+            updatedFiles[name] = pyRef.current.FS.readFile(path, { encoding: 'utf8' })
+          } catch (_) {
+            // Binary or otherwise unreadable as utf8 — leave editor state untouched.
+          }
+        }
+      } catch (_) {}
+
       setOutput([...runBuffer.current])
       setIsRunning(false)
     }
+    return updatedFiles
   }, [isRunning])
 
   // ── Package installation ────────────────────────────────────────────────────
