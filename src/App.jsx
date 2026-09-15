@@ -88,26 +88,16 @@ function App() {
   }, [activeCode, files, runCode])
 
   // ── File tab management ─────────────────────────────────────────────────────
-  const handleAddFile = useCallback(async () => {
-    const loaded = await loadFiles()
-    if (!loaded.length) return
-
-    setFiles((prev) => {
-      const next = { ...prev }
-      loaded.forEach(({ filename, content }) => { next[filename] = content })
-      return next
-    })
-    // Switch to the first loaded file
-    setActiveFile(loaded[0].filename)
-
-    // Auto-install packages detected in any loaded .py file
-    const allPy = loaded
-      .filter(({ filename }) => filename.endsWith('.py'))
-      .map(({ content }) => content)
-      .join('\n')
-    const missing = detectMissingPackages(allPy, installedPackages)
-    if (missing.length) installPackages(missing)
-  }, [installedPackages, installPackages])
+  const handleNewFile = useCallback(() => {
+    let n = 1
+    let name = 'untitled.py'
+    while (Object.prototype.hasOwnProperty.call(files, name)) {
+      n += 1
+      name = `untitled${n}.py`
+    }
+    setFiles((prev) => ({ ...prev, [name]: '' }))
+    setActiveFile(name)
+  }, [files])
 
   const handleRemoveFile = useCallback((filename) => {
     setFiles((prev) => {
@@ -228,7 +218,7 @@ function App() {
             activeFile={activeFile}
             onSelect={setActiveFile}
             onRemove={handleRemoveFile}
-            onAdd={handleAddFile}
+            onAdd={handleNewFile}
           />
           <CodeEditor
             value={activeCode}

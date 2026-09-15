@@ -2,8 +2,8 @@
  * @file FileTabs.jsx - Horizontal tab bar showing all workspace files.
  *
  * Displays one tab per file with an icon, filename, and (when more than one
- * file is open) a close button.  An "+" button opens a file picker to add
- * more files to the workspace.
+ * file is open) a close button.  A "+" button creates a new blank file in
+ * the workspace.
  *
  * @license Creative Commons BY-NC-SA 4.0 - Simon Rundell
  */
@@ -22,7 +22,7 @@ function fileIcon(filename) {
  * @param {string}   props.activeFile    - Currently selected filename
  * @param {(f:string) => void} props.onSelect  - Switch active file
  * @param {(f:string) => void} props.onRemove  - Remove a file from workspace
- * @param {() => void}          props.onAdd    - Trigger file-add picker
+ * @param {() => void}          props.onAdd    - Create a new blank file
  */
 function FileTabs({ files, activeFile, onSelect, onRemove, onAdd }) {
   const names = Object.keys(files)
@@ -54,7 +54,7 @@ function FileTabs({ files, activeFile, onSelect, onRemove, onAdd }) {
       <button
         className="file-tab-add"
         onClick={onAdd}
-        title="Add a file to the workspace (.py, .csv, .json)"
+        title="New blank file"
       >
         +
       </button>
