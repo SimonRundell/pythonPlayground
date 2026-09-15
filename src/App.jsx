@@ -3,7 +3,8 @@
  *
  * Layout: full-viewport flex column.
  *   Header  – branding + Toolbar
- *   Body    – CodeEditor (left, with FileTabs) | OutputPanel (right)
+ *   Body    – CodeEditor (left, with FileTabs) | drag handle | OutputPanel (right)
+ *             pane widths are user-resizable via the handle (editorWidthPct state)
  *   Modals  – LibraryManager, SaveAsModal, ConfirmModal, InputModal
  *
  * Workspace model:
@@ -14,7 +15,7 @@
  *
  * @license Creative Commons BY-NC-SA 4.0 - Simon Rundell
  */
-import { useState, useRef, useCallback } from 'react'
+import { useState, useRef, useCallback, useEffect } from 'react'
 import Toolbar from './components/Toolbar'
 import CodeEditor from './components/CodeEditor'
 import FileTabs from './components/FileTabs'
@@ -30,6 +31,8 @@ import { detectMissingPackages } from './utils/packages'
 import CMFloatAd from './components/cmFloatAd'
 
 const DEFAULT_FILENAME = 'script.py'
+const MIN_EDITOR_WIDTH_PCT = 20
+const MAX_EDITOR_WIDTH_PCT = 80
 
 const DEFAULT_CODE = `# Python Playground
 # Write your Python code here and click  ▶ Run  (or press Ctrl+Enter)
@@ -57,6 +60,39 @@ function App() {
   const [showSaveAs, setShowSaveAs]       = useState(false)
   const [showReset, setShowReset]         = useState(false)
   const [resetKey, setResetKey]           = useState(0)
+
+  // ── Resizable editor/output split ──────────────────────────────────────────
+  const [editorWidthPct, setEditorWidthPct] = useState(50)
+  const appBodyRef  = useRef(null)
+  const isDragging  = useRef(false)
+
+  const handleResizeStart = useCallback((e) => {
+    e.preventDefault()
+    isDragging.current = true
+    document.body.style.cursor = 'col-resize'
+    document.body.style.userSelect = 'none'
+  }, [])
+
+  useEffect(() => {
+    const handlePointerMove = (e) => {
+      if (!isDragging.current || !appBodyRef.current) return
+      const rect = appBodyRef.current.getBoundingClientRect()
+      const pct = ((e.clientX - rect.left) / rect.width) * 100
+      setEditorWidthPct(Math.min(MAX_EDITOR_WIDTH_PCT, Math.max(MIN_EDITOR_WIDTH_PCT, pct)))
+    }
+    const handlePointerUp = () => {
+      if (!isDragging.current) return
+      isDragging.current = false
+      document.body.style.cursor = ''
+      document.body.style.userSelect = ''
+    }
+    window.addEventListener('pointermove', handlePointerMove)
+    window.addEventListener('pointerup', handlePointerUp)
+    return () => {
+      window.removeEventListener('pointermove', handlePointerMove)
+      window.removeEventListener('pointerup', handlePointerUp)
+    }
+  }, [])
 
   const turtleCanvasRef = useRef(null)
 
@@ -211,8 +247,8 @@ function App() {
         />
       </header>
 
-      <main className="app-body">
-        <div className="editor-pane">
+      <main className="app-body" ref={appBodyRef}>
+        <div className="editor-pane" style={{ flexBasis: `${editorWidthPct}%` }}>
           <FileTabs
             files={files}
             activeFile={activeFile}
@@ -227,7 +263,14 @@ function App() {
             language={activeLang}
           />
         </div>
-        <div className="output-pane">
+        <div
+          className="resize-handle"
+          onPointerDown={handleResizeStart}
+          role="separator"
+          aria-orientation="vertical"
+          aria-label="Resize editor and output panels"
+        />
+        <div className="output-pane" style={{ flexBasis: `${100 - editorWidthPct}%` }}>
           <OutputPanel
             output={output}
             onClear={clearOutput}
