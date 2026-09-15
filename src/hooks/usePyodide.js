@@ -132,6 +132,10 @@ function usePyodide(turtleCanvasRef, resetKey = 0) {
 import os, warnings
 os.environ['MPLBACKEND'] = 'Agg'
 warnings.filterwarnings('ignore', message='Matplotlib is currently using agg')
+# Pandas warns on import that pyarrow isn't installed and will become a hard
+# dependency in pandas 3.0. It's harmless here (no curated package needs it)
+# but reads as a scary error to beginner students, so it's suppressed.
+warnings.filterwarnings('ignore', message='\\s*Pyarrow will become a required dependency')
 
 import sys, builtins, js as _js
 
