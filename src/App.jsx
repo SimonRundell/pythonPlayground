@@ -6,6 +6,7 @@
  *   Body    – CodeEditor (left, with FileTabs) | drag handle | OutputPanel (right)
  *             pane widths are user-resizable via the handle (editorWidthPct state)
  *   Modals  – LibraryManager, SaveAsModal, ConfirmModal, InputModal
+ *   Drawers – AlgorithmsDrawer, PythonBasicsDrawer (mutually exclusive)
  *
  * Workspace model:
  *   `files`      – plain object { [filename: string]: string }
@@ -25,6 +26,7 @@ import SaveAsModal from './components/SaveAsModal'
 import ConfirmModal from './components/ConfirmModal'
 import InputModal from './components/InputModal'
 import AlgorithmsDrawer from './components/AlgorithmsDrawer'
+import PythonBasicsDrawer from './components/PythonBasicsDrawer'
 import usePyodide from './hooks/usePyodide'
 import { loadFiles, saveFile, saveFilesAsZip, languageForFile } from './utils/fileHandling'
 import { detectMissingPackages } from './utils/packages'
@@ -57,6 +59,7 @@ function App() {
   // ── UI state ────────────────────────────────────────────────────────────────
   const [showPackages, setShowPackages]   = useState(false)
   const [showAlgorithms, setShowAlgorithms] = useState(false)
+  const [showBasics, setShowBasics]       = useState(false)
   const [showSaveAs, setShowSaveAs]       = useState(false)
   const [showReset, setShowReset]         = useState(false)
   const [resetKey, setResetKey]           = useState(0)
@@ -214,10 +217,20 @@ function App() {
     setResetKey((k) => k + 1)
   }, [])
 
-  // ── Algorithms drawer ───────────────────────────────────────────────────────
-  const handleLoadAlgorithmCode = useCallback((algorithmCode) => {
-    setFiles((prev) => ({ ...prev, [activeFile]: algorithmCode }))
+  // ── Teaching drawers (Algorithms / Python Basics) ───────────────────────────
+  const handleLoadDrawerCode = useCallback((code) => {
+    setFiles((prev) => ({ ...prev, [activeFile]: code }))
   }, [activeFile])
+
+  const openAlgorithms = useCallback(() => {
+    setShowBasics(false)
+    setShowAlgorithms(true)
+  }, [])
+
+  const openBasics = useCallback(() => {
+    setShowAlgorithms(false)
+    setShowBasics(true)
+  }, [])
 
   // ── SaveAsModal initial name ────────────────────────────────────────────────
   const saveAsInitialName = fileCount === 1
@@ -238,7 +251,8 @@ function App() {
           onLoad={handleLoad}
           onSave={handleSave}
           onPackages={() => setShowPackages(true)}
-          onAlgorithms={() => setShowAlgorithms(true)}
+          onBasics={openBasics}
+          onAlgorithms={openAlgorithms}
           onReset={() => setShowReset(true)}
           isRunning={isRunning}
           installing={installing}
@@ -319,7 +333,13 @@ function App() {
       <AlgorithmsDrawer
         isOpen={showAlgorithms}
         onClose={() => setShowAlgorithms(false)}
-        onLoadCode={handleLoadAlgorithmCode}
+        onLoadCode={handleLoadDrawerCode}
+      />
+
+      <PythonBasicsDrawer
+        isOpen={showBasics}
+        onClose={() => setShowBasics(false)}
+        onLoadCode={handleLoadDrawerCode}
       />
 
       <CMFloatAd bgColor="transparent" />

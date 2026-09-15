@@ -1,5 +1,6 @@
 /**
- * @file Toolbar.jsx - Top action bar with Run, Load, Save, Packages and Algorithms buttons.
+ * @file Toolbar.jsx - Top action bar with Run, Load, Save, Packages, Python Basics
+ * and Algorithms buttons.
  * @license Creative Commons BY-NC-SA 4.0 - Simon Rundell
  */
 
@@ -9,6 +10,7 @@
  * @param {() => void}  props.onLoad
  * @param {() => void}  props.onSave
  * @param {() => void}  props.onPackages
+ * @param {() => void}  props.onBasics
  * @param {() => void}  props.onAlgorithms
  * @param {() => void}  props.onReset
  * @param {boolean}     props.isRunning
@@ -16,7 +18,7 @@
  * @param {boolean}     props.pyodideLoaded
  * @param {string}      props.loadingMessage
  */
-function Toolbar({ onRun, onLoad, onSave, onPackages, onAlgorithms, onReset, isRunning, installing, pyodideLoaded, loadingMessage }) {
+function Toolbar({ onRun, onLoad, onSave, onPackages, onBasics, onAlgorithms, onReset, isRunning, installing, pyodideLoaded, loadingMessage }) {
   return (
     <div className="toolbar">
       <button
@@ -60,6 +62,14 @@ function Toolbar({ onRun, onLoad, onSave, onPackages, onAlgorithms, onReset, isR
         title="Reset code and uninstall packages"
       >
         🔄 Reset
+      </button>
+
+      <button
+        className="btn btn-basics"
+        onClick={onBasics}
+        title="Open the Python Basics walkthrough for absolute beginners"
+      >
+        🔰 Python Basics
       </button>
 
       <button

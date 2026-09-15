@@ -20,6 +20,7 @@ A browser-based Python IDE that runs entirely client-side — no server, no inst
 | **`input()` modal** | Python's `input()` opens a styled modal dialog; no native browser prompt |
 | **Tabbed output** | Separate Console and Graphics tabs; auto-switches to Graphics when turtle or matplotlib output is produced |
 | **Algorithms Drawer** | Sliding reference panel with searchable index and full-detail modal for each algorithm, from *The Little Book of Algorithms 2.0* by William Lau (CC BY-NC-SA 4.0) |
+| **Python Basics Drawer** | Step-by-step beginner walkthrough — 16 topics from "What is a variable?" through to NumPy/Pandas/Matplotlib, each with teaching notes, an example, and two challenges |
 | **Playground Reset** | One-click reset clears all workspace files, restores Hello World, and fully reinitialises the Python environment |
 
 ---
@@ -143,6 +144,20 @@ Click **📚 Algorithm Challenges** in the toolbar to open a sliding drawer cont
 
 Click **Load into Editor →** on any example or challenge to transfer the code directly into the editor.  Use the search box or category filter chips to navigate the content.
 
+### Python Basics Walkthrough
+
+Click **🔰 Python Basics** in the toolbar to open a second sliding drawer — a systematic, beginner-friendly introduction to Python for students who haven't coded before. It uses the same drawer/detail-modal mechanism as the Algorithms drawer (opening one closes the other) and covers 16 topics in teaching order, grouped into categories:
+
+- **Basics** — What is a variable?, Data types & casting, Numbers & operators, Strings & f-strings, print() and input()
+- **Logic** — Booleans & comparison operators, if/elif/else
+- **Loops** — for loops, while loops
+- **Collections** — Lists, Dictionaries, Tuples & Sets
+- **Functions & Errors** — Functions, try/except error handling
+- **Files** — Reading & writing files
+- **Data Science** — Intro to NumPy, Pandas & Matplotlib
+
+Each topic includes teaching notes, an annotated example, and two challenges with starter code — several of the foundational topics (variables, data types, lists, dictionaries, for loops, functions) also include a small inline diagram. As with the Algorithms drawer, **Load into Editor →** and **Load Starter Code →** transfer code straight into the active file.
+
 ### Resetting the Playground
 
 Click **🔄 Reset** to restore the Hello World starter code and fully reinitialise the Python environment.  All installed packages are removed and Pyodide is restarted (the WASM bundle is browser-cached so reinitialisation takes only a few seconds).
@@ -156,7 +171,7 @@ src/
   App.jsx                  # Root component — layout, workspace state, and modal wiring
   App.css                  # Application styles
   components/
-    Toolbar.jsx            # Run / Load / Save / Packages / Reset / Algorithms bar
+    Toolbar.jsx            # Run / Load / Save / Packages / Python Basics / Algorithms / Reset bar
     FileTabs.jsx           # VS Code-style workspace file tab bar
     CodeEditor.jsx         # Monaco editor wrapper (language-aware)
     OutputPanel.jsx        # Tabbed Console + Graphics output panel
@@ -164,7 +179,9 @@ src/
     SaveAsModal.jsx        # Save As filename dialog (single file or ZIP)
     ConfirmModal.jsx       # Generic confirmation dialog (used by Reset)
     InputModal.jsx         # Modal dialog for Python input() calls
-    AlgorithmsDrawer.jsx   # Algorithms index drawer + full detail modal
+    TeachingDrawer.jsx     # Generic sliding drawer + detail modal shared by both teaching drawers below
+    AlgorithmsDrawer.jsx   # Algorithms index (thin wrapper around TeachingDrawer)
+    PythonBasicsDrawer.jsx # Beginner Python walkthrough (thin wrapper around TeachingDrawer)
     cmFloatAd.jsx          # College branding component
   hooks/
     usePyodide.js          # React hook managing the Pyodide instance
@@ -173,6 +190,7 @@ src/
     fileHandling.js        # Multi-file load / ZIP save helpers (JSZip)
     packages.js            # Curated package list + auto-detect helpers
     algorithms.js          # Algorithm data (William Lau CC BY-NC-SA 4.0)
+    pythonBasics.js         # Beginner Python curriculum data (variables → NumPy/Pandas/Matplotlib)
 public/
   py_modules/
     turtle.py              # Python turtle module (calls JS canvas API via Pyodide bridge)
@@ -246,6 +264,19 @@ Uses ESLint with the `eslint-plugin-react-hooks` and `eslint-plugin-react-refres
 ---
 
 ## Changelog
+
+### v0.0.5 — 2026-09-15
+
+**New features**
+
+- **Python Basics drawer** — a second sliding drawer (🔰 Python Basics, beside 📚 Algorithm Challenges) offering a systematic, beginner-friendly walkthrough of Python: 16 topics from "What is a variable?" through to a first look at NumPy, Pandas and Matplotlib, each with teaching notes, an annotated example, two challenges, and — for the foundational topics — a small inline SVG diagram. Opening one drawer closes the other.
+- **Shared `TeachingDrawer` component** — the drawer/search/category-filter/detail-modal UI used by the Algorithms drawer was generalised into a reusable component, configured via props, so both drawers share one implementation. `AlgorithmsDrawer.jsx` and `PythonBasicsDrawer.jsx` are now thin, content-specific wrappers around it.
+- **Resizable editor/output split** — a draggable divider between the code editor and the output panel, clamped between 20% and 80% width.
+- **New tab button creates a blank file** — the `+` button in the workspace tab bar now creates a uniquely-named blank `.py` file directly, instead of opening the file-picker dialog (use the toolbar's **Load** button to open a file from disk).
+
+**Changes**
+
+- `cmFloatAd.jsx` branding banner updated with a clearer logo and the current department name; kept fully self-contained (inline styles only) so it can be dropped into other projects unchanged.
 
 ### v0.0.4 — 2026-07-12
 
