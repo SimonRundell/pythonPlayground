@@ -15,6 +15,7 @@
  */
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { initTurtleApi } from '../utils/turtleApi'
+import { initGuiApi } from '../utils/guiApi'
 
 const PYODIDE_CDN = 'https://cdn.jsdelivr.net/pyodide/v0.26.4/full/'
 
@@ -58,9 +59,10 @@ async function getPyodide(onProgress) {
 /**
  * Hook for the Python interpreter.
  * @param {React.RefObject<HTMLCanvasElement>} turtleCanvasRef
+ * @param {React.RefObject<HTMLElement>} guiContainerRef - Root element for guizero widgets.
  * @param {number} resetKey - Increment to destroy and re-create the Pyodide instance.
  */
-function usePyodide(turtleCanvasRef, resetKey = 0) {
+function usePyodide(turtleCanvasRef, guiContainerRef, resetKey = 0) {
   const [isLoaded, setIsLoaded] = useState(false)
   const [loadingMessage, setLoadingMessage] = useState('Initialising…')
   const [isRunning, setIsRunning] = useState(false)
@@ -68,6 +70,7 @@ function usePyodide(turtleCanvasRef, resetKey = 0) {
   const [installedPackages, setInstalledPackages] = useState(new Set())
   const [installing, setInstalling] = useState(null)
   const [inputRequest, setInputRequest] = useState(null)
+  const [guiRunning, setGuiRunning] = useState(false)
 
   const pyRef = useRef(null)
   /** Collects output items synchronously during a run; flushed to state on completion. */
@@ -164,8 +167,15 @@ async def _py_input(prompt=''):
     return '' if result is None else str(result)
 builtins.input = _py_input
 
-# AST transformer: rewrites input(...) → await input(...) in user code,
-# and promotes any function containing await to async def.
+# AST transformer: rewrites input(...) into await input(...), and guizero's
+# App.display() into await App.display(...), in user code — then promotes any
+# function containing an await to async def. This is what lets a script call
+# a blocking-looking function without needing await itself: input() and
+# App.display() are the only two calls in this playground that cooperatively
+# suspend execution (see guiApi.js / _py_input_request for what they wait on).
+# Note: matching .display() by name alone means an unrelated user-defined
+# class with its own .display() method would also get rewritten — accepted
+# as a rare edge case, same tradeoff already made for input().
 import ast as _ast
 
 class _InputTransformer(_ast.NodeTransformer):
@@ -174,6 +184,8 @@ class _InputTransformer(_ast.NodeTransformer):
     def visit_Call(self, node):
         self.generic_visit(node)
         if isinstance(node.func, _ast.Name) and node.func.id == 'input':
+            return _ast.copy_location(_ast.Await(value=node), node)
+        if isinstance(node.func, _ast.Attribute) and node.func.attr == 'display':
             return _ast.copy_location(_ast.Await(value=node), node)
         return node
     def visit_FunctionDef(self, node):
@@ -227,13 +239,17 @@ os.chdir('/workspace')
 
         // ── Inject custom Python modules into Pyodide's virtual FS ───────────
         if (mounted) setLoadingMessage('Loading modules…')
-        const turtleCode = await fetch('/py_modules/turtle.py').then((r) => r.text())
+        const [turtleCode, guizeroCode] = await Promise.all([
+          fetch('/py_modules/turtle.py').then((r) => r.text()),
+          fetch('/py_modules/guizero.py').then((r) => r.text()),
+        ])
         if (!mounted) return
 
         // mkdir is idempotent here – if it already exists from a previous init,
         // just ignore the error and overwrite the file.
         try { py.FS.mkdir('/pyodide_modules') } catch (_) {}
         py.FS.writeFile('/pyodide_modules/turtle.py', turtleCode)
+        py.FS.writeFile('/pyodide_modules/guizero.py', guizeroCode)
 
         // Add to sys.path only once
         await py.runPythonAsync(`
@@ -249,6 +265,9 @@ if '/pyodide_modules' not in sys.path:
 
         if (turtleCanvasRef.current) {
           initTurtleApi(turtleCanvasRef.current)
+        }
+        if (guiContainerRef.current) {
+          initGuiApi(guiContainerRef.current, setGuiRunning)
         }
 
         if (mounted) {
@@ -267,12 +286,18 @@ if '/pyodide_modules' not in sys.path:
     return () => { mounted = false }
   }, [resetKey]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Re-init turtle canvas when the ref becomes available after first load
+  // Re-init turtle canvas / GUI container when their refs become available after first load
   useEffect(() => {
     if (isLoaded && turtleCanvasRef.current) {
       initTurtleApi(turtleCanvasRef.current)
     }
   }, [isLoaded, turtleCanvasRef])
+
+  useEffect(() => {
+    if (isLoaded && guiContainerRef.current) {
+      initGuiApi(guiContainerRef.current, setGuiRunning)
+    }
+  }, [isLoaded, guiContainerRef])
 
   // ── Code execution ──────────────────────────────────────────────────────────
   /**
@@ -286,6 +311,7 @@ if '/pyodide_modules' not in sys.path:
     setIsRunning(true)
     runBuffer.current = []
     if (window._turtle_reset) window._turtle_reset()
+    if (window._gui_reset) window._gui_reset()
     let updatedFiles = {}
 
     // Sync all workspace files to Pyodide's /workspace/ directory
@@ -434,6 +460,10 @@ _mpl_captured
     })
   }, [])
 
+  const stopGui = useCallback(() => {
+    if (window._gui_request_stop) window._gui_request_stop()
+  }, [])
+
   return {
     isLoaded,
     loadingMessage,
@@ -447,6 +477,8 @@ _mpl_captured
     installing,
     inputRequest,
     resolveInput,
+    guiRunning,
+    stopGui,
   }
 }
 

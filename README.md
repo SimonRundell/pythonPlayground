@@ -14,11 +14,12 @@ A browser-based Python IDE that runs entirely client-side — no server, no inst
 | **ZIP Load / Save** | Load a ZIP to restore a full project; Save bundles all workspace files into a ZIP automatically |
 | **Module & Data File Support** | All workspace files are written to `/workspace/` before each run — `import helpers` and `open('data.csv')` work out of the box |
 | **Turtle Graphics** | Custom canvas-based turtle backend; `import turtle` works out of the box |
+| **guizero GUI (Phase 1)** | `App`, `Box`, `Text`, `PushButton` — the simplified GUI library taught in UK GCSE/KS3 CS, reimplemented against the DOM; `from guizero import ...` works out of the box |
 | **Matplotlib** | Charts rendered to PNG and displayed in the Graphics tab after `plt.show()` |
 | **Package Manager** | One-click install of scientific packages (NumPy, Pandas, SciPy, scikit-learn, and more) via micropip |
 | **Auto-install on Load** | Opening a `.py` file automatically detects and installs any required curated packages |
 | **`input()` modal** | Python's `input()` opens a styled modal dialog; no native browser prompt |
-| **Tabbed output** | Separate Console and Graphics tabs; auto-switches to Graphics when turtle or matplotlib output is produced |
+| **Tabbed output** | Separate Console, Graphics and GUI tabs; auto-switches to Graphics or GUI when their respective output is produced |
 | **Algorithms Drawer** | Sliding reference panel with searchable index and full-detail modal for each algorithm, from *The Little Book of Algorithms 2.0* by William Lau (CC BY-NC-SA 4.0) |
 | **Python Basics Drawer** | Step-by-step beginner walkthrough — 16 topics from "What is a variable?" through to NumPy/Pandas/Matplotlib, each with teaching notes, an example, and two challenges |
 | **Playground Reset** | One-click reset clears all workspace files, restores Hello World, and fully reinitialises the Python environment |
@@ -32,6 +33,7 @@ A browser-based Python IDE that runs entirely client-side — no server, no inst
 - [Pyodide 0.26.4](https://pyodide.org/) — CPython compiled to WebAssembly (loaded from CDN)
 - [JSZip](https://stuk.github.io/jszip/) — ZIP archive creation and extraction
 - HTML5 Canvas API — Turtle graphics rendering
+- [guizero](https://lawsie.github.io/guizero/)-compatible DOM widget bridge — reimplemented from scratch, no external GUI library dependency
 
 ---
 
@@ -91,6 +93,61 @@ for _ in range(4):
 ```
 
 Output appears in the **Graphics** tab automatically.  The turtle canvas is hidden until drawing commands are issued.
+
+### guizero GUI apps
+
+`guizero` is always available — no installation needed. It's the same simplified GUI library taught in UK GCSE/KS3 Computer Science (itself a wrapper around tkinter), reimplemented here directly against the DOM since real tkinter needs a display server a browser tab doesn't have.
+
+```python
+from guizero import App, Text, PushButton
+
+app = App(title="Hello", width=250, height=120)
+Text(app, text="Click the button")
+
+def say_hi():
+    greeting.value = "Hi there!"
+
+greeting = Text(app, text="")
+PushButton(app, command=say_hi, text="Greet")
+
+app.display()
+```
+
+Output appears in the **GUI** tab automatically. `app.display()` behaves like it does in real guizero — it blocks the script until the app is stopped — so a **⏹ Stop** button appears on the GUI tab while it's running; press it to end the app and let the rest of the script (if any) continue.
+
+`TextBox` reads and writes live — `.value` always reflects whatever's currently in the field, and its `command=` callback fires on every keystroke:
+
+```python
+from guizero import App, Text, TextBox
+
+app = App(title="Greeter", width=300, height=150)
+Text(app, text="What's your name?")
+
+def update_greeting():
+    greeting.value = f"Hello, {name_box.value or 'stranger'}!"
+
+name_box = TextBox(app, command=update_greeting, width=20)
+greeting = Text(app, text="Hello, stranger!")
+
+app.display()
+```
+
+`Drawing` gives you a canvas for direct shapes and text — `line`, `oval`, `rectangle`, `triangle`, `polygon`, `text`, `clear`:
+
+```python
+from guizero import App, Drawing
+
+app = App(title="Shapes", width=250, height=200)
+canvas = Drawing(app, width=220, height=150)
+
+canvas.rectangle(10, 10, 100, 80, color="#8bc34a")
+canvas.oval(120, 10, 200, 80, color="#ffd54f")
+canvas.text(10, 100, "Shapes!", color="#1a3a5c", size=14)
+
+app.display()
+```
+
+**Widget set so far:** `App`, `Box`, `Text`, `PushButton`, `TextBox`, `Drawing`, with `layout="auto"` (stacked) or `layout="grid"` (using each widget's `grid=[column, row]`). Not yet supported: `Slider`, `ListBox`, `Combo`, `Picture`, `MenuBar`, and multiple windows. `Drawing.image()` is a no-op stub — there's no image-loading pipeline in this playground. Unrecognised keyword arguments are accepted and silently ignored rather than raising, so tutorials using not-yet-supported options degrade gracefully instead of crashing.
 
 ### Matplotlib
 
@@ -174,7 +231,7 @@ src/
     Toolbar.jsx            # Run / Load / Save / Packages / Python Basics / Algorithms / Reset bar
     FileTabs.jsx           # VS Code-style workspace file tab bar
     CodeEditor.jsx         # Monaco editor wrapper (language-aware)
-    OutputPanel.jsx        # Tabbed Console + Graphics output panel
+    OutputPanel.jsx        # Tabbed Console + Graphics + GUI output panel
     LibraryManager.jsx     # Package installation modal
     SaveAsModal.jsx        # Save As filename dialog (single file or ZIP)
     ConfirmModal.jsx       # Generic confirmation dialog (used by Reset)
@@ -187,6 +244,7 @@ src/
     usePyodide.js          # React hook managing the Pyodide instance
   utils/
     turtleApi.js           # Canvas-based turtle graphics backend
+    guiApi.js               # DOM-based widget host for the guizero bridge
     fileHandling.js        # Multi-file load / ZIP save helpers (JSZip)
     packages.js            # Curated package list + auto-detect helpers
     algorithms.js          # Algorithm data (William Lau CC BY-NC-SA 4.0)
@@ -194,9 +252,13 @@ src/
 public/
   py_modules/
     turtle.py              # Python turtle module (calls JS canvas API via Pyodide bridge)
+    guizero.py              # Python guizero module (calls JS DOM widget API via Pyodide bridge)
   scripts/
     test_builtins.py       # Standard library functionality test
     test_turtle.py         # Turtle graphics test
+    demo_guizero_counter.py # guizero GUI demo — a simple +1/-1 counter app
+    demo_guizero_textbox.py # guizero GUI demo — live TextBox-to-Text binding
+    demo_guizero_drawing.py # guizero GUI demo — Drawing canvas shapes and text
     test_matplotlib.py     # Matplotlib chart rendering test
     test_numpy.py          # NumPy test
     test_pandas.py         # Pandas test
@@ -225,6 +287,16 @@ The turtle implementation is a two-layer canvas architecture:
 `turtle.py` (in `public/py_modules/`) is a Python module injected into Pyodide's virtual filesystem.  It calls JavaScript functions (`window._turtle_draw_line`, `window._turtle_update_turtle`, etc.) via Pyodide's JS bridge.  This means full Python `turtle` semantics work without any server-side rendering.
 
 The turtle canvas is hidden when no drawing has taken place in the current run, so matplotlib-only scripts do not show an empty canvas above their charts.
+
+---
+
+## How the guizero GUI Works
+
+Real tkinter (what guizero normally wraps) needs an actual display server, which a browser tab doesn't have — so `guizero.py` (in `public/py_modules/`) reimplements the guizero API directly against the DOM instead of delegating to tkinter. `guiApi.js` owns a container element React mounts in the GUI tab and creates/updates real `<div>`/`<span>`/`<button>` elements in response to calls from Python (`window._gui_create_box`, `window._gui_create_button`, etc.) — there's no virtual DOM here, Python manipulates real elements directly, the same way turtle draws directly onto its canvas.
+
+The interesting problem is `app.display()`: in real guizero this call blocks until the window closes, and clicking a button while it's blocked has to call back into the still-running script. A one-shot "run to completion" interpreter can't do that, so `app.display()` is rewritten to `await app.display()` by the same AST transformer that already handles `input()` — it recognises calls to a method named `display` and wraps them in `await`, promoting the enclosing function to `async def` as needed. `display()` then awaits a JavaScript Promise that only resolves when the **⏹ Stop** button is pressed (or `App.destroy()` is called), which cooperatively yields control back to the browser's event loop — letting button clicks fire and call back into Python — without freezing the tab.
+
+Button and TextBox `command=` callbacks are kept alive across multiple events using `pyodide.ffi.create_proxy`; those proxies are explicitly destroyed before each new Run (and on Playground Reset) to avoid leaking references between scripts. `TextBox.value` is read live from the DOM input on every access rather than cached in Python, since the student may have typed since Python last touched the widget. `Drawing` widgets hold their own 2D canvas context and draw immediately on each method call, the same direct-drawing approach `turtle.py` already uses — no virtual scene graph, no batching.
 
 ---
 
@@ -272,6 +344,26 @@ Uses ESLint with the `eslint-plugin-react-hooks` and `eslint-plugin-react-refres
 ---
 
 ## Changelog
+
+### v0.0.9 — 2026-09-24
+
+**New features**
+
+- **guizero `Drawing` (Phase 3)** — a canvas widget for direct shapes and text: `line`, `oval`, `rectangle`, `triangle`, `polygon`, `text`, `clear`. Each Drawing widget owns its own 2D canvas context and draws immediately on each call, the same direct-drawing approach `turtle.py` already uses. `Drawing.image()` is a no-op stub (no image-loading pipeline). Added `public/scripts/demo_guizero_drawing.py`.
+- This completes the originally scoped Phase 1–3 guizero build: `App`, `Box`, `Text`, `PushButton`, `TextBox`, `Drawing`, both layout modes, and the Stop-button `display()` bridge.
+
+### v0.0.8 — 2026-09-24
+
+**New features**
+
+- **guizero `TextBox` (Phase 2)** — single-line and multiline (`multiline=True`) text entry, with `.value` read live from the DOM (not cached) so it always reflects what the student has typed, and a `command=` callback that fires on every keystroke, matching real guizero. Added `public/scripts/demo_guizero_textbox.py`.
+
+### v0.0.7 — 2026-09-24
+
+**New features**
+
+- **guizero GUI apps (Phase 1)** — `from guizero import App, Box, Text, PushButton` now works with no installation. guizero is the simplified GUI library taught in UK GCSE/KS3 Computer Science (a wrapper around tkinter); since real tkinter needs a display server a browser can't provide, this is a from-scratch reimplementation against the DOM that runs real guizero code for the supported widget subset unmodified. `App.display()` cooperatively blocks the script (via the same AST-rewrite mechanism already used for `input()`) until a new **⏹ Stop** button on the new **GUI** output tab is pressed, letting button clicks call back into the still-running script. `layout="auto"` and `layout="grid"` (with per-widget `grid=[column, row]`) are both supported. Added `public/py_modules/guizero.py`, `src/utils/guiApi.js`, and `public/scripts/demo_guizero_counter.py`.
+- Not yet supported: `TextBox`, `Drawing`, `Slider`, `ListBox`, `Combo`, `Picture`, `MenuBar`, multiple windows — planned for later phases.
 
 ### v0.0.6 — 2026-09-24
 

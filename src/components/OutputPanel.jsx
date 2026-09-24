@@ -1,8 +1,10 @@
 /**
- * @file OutputPanel.jsx - Tabbed output panel: Console and Graphics.
+ * @file OutputPanel.jsx - Tabbed output panel: Console, Graphics and GUI.
  *
  * Console tab: printed text and error messages.
  * Graphics tab: turtle canvas + matplotlib PNG images.
+ * GUI tab: guizero widgets (App/Box/Text/PushButton), plus a Stop button
+ *   while a script is blocked inside App.display().
  *
  * @license Creative Commons BY-NC-SA 4.0 - Simon Rundell
  */
@@ -13,13 +15,17 @@ import { useState, useEffect, useRef } from 'react'
  * @param {Array<{type:string,content:string}>} props.output
  * @param {() => void}               props.onClear
  * @param {React.RefObject}          props.turtleCanvasRef
+ * @param {React.RefObject}          props.guiContainerRef
+ * @param {boolean}                  props.guiRunning
+ * @param {() => void}               props.onStopGui
  */
-function OutputPanel({ output, onClear, turtleCanvasRef }) {
+function OutputPanel({ output, onClear, turtleCanvasRef, guiContainerRef, guiRunning, onStopGui }) {
   const [activeTab, setActiveTab] = useState('console')
   const consoleEndRef = useRef(null)
 
   const hasImages = output.some((o) => o.type === 'image')
   const turtleUsed = typeof window._turtle_was_used === 'function' && window._turtle_was_used()
+  const guiUsed = typeof window._gui_was_used === 'function' && window._gui_was_used()
 
   // Auto-scroll console to bottom when new output arrives
   useEffect(() => {
@@ -34,6 +40,13 @@ function OutputPanel({ output, onClear, turtleCanvasRef }) {
       setActiveTab('graphics')
     }
   }, [hasImages, turtleUsed])
+
+  // Switch to the GUI tab automatically once a guizero app is built
+  useEffect(() => {
+    if (guiUsed) {
+      setActiveTab('gui')
+    }
+  }, [guiUsed])
 
   const consoleItems = output.filter((o) => o.type !== 'image')
   const imageItems = output.filter((o) => o.type === 'image')
@@ -56,6 +69,13 @@ function OutputPanel({ output, onClear, turtleCanvasRef }) {
         >
           Graphics
           {(hasImages || turtleUsed) && <span className="tab-badge">●</span>}
+        </button>
+        <button
+          className={`tab-btn ${activeTab === 'gui' ? 'active' : ''}`}
+          onClick={() => setActiveTab('gui')}
+        >
+          GUI
+          {guiUsed && <span className="tab-badge">●</span>}
         </button>
         <button className="btn-clear" onClick={onClear} title="Clear output">
           ✕ Clear
@@ -100,6 +120,26 @@ function OutputPanel({ output, onClear, turtleCanvasRef }) {
             />
           </div>
         ))}
+      </div>
+
+      {/* ── GUI (guizero) ── */}
+      <div className={`tab-content gui-tab ${activeTab === 'gui' ? 'visible' : 'hidden'}`}>
+        <div className="gui-toolbar">
+          {guiRunning && (
+            <button className="btn-gui-stop" onClick={onStopGui} title="Stop the running app">
+              ⏹ Stop
+            </button>
+          )}
+        </div>
+        {/* Container stays in DOM so the ref is always valid; guiApi.js manages its children directly */}
+        <div className="gui-wrapper" style={{ display: guiUsed ? 'inline-block' : 'none' }}>
+          <div ref={guiContainerRef} className="gui-app-root" />
+        </div>
+        {!guiUsed && (
+          <span className="console-placeholder">
+            Build a guizero app (App, Text, PushButton…) and it will appear here.
+          </span>
+        )}
       </div>
     </div>
   )

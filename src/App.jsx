@@ -98,13 +98,15 @@ function App() {
   }, [])
 
   const turtleCanvasRef = useRef(null)
+  const guiContainerRef = useRef(null)
 
   const {
     isLoaded, loadingMessage, isRunning,
     output, clearOutput, runCode,
     installedPackages, installPackage, installPackages, installing,
     inputRequest, resolveInput,
-  } = usePyodide(turtleCanvasRef, resetKey)
+    guiRunning, stopGui,
+  } = usePyodide(turtleCanvasRef, guiContainerRef, resetKey)
 
   // ── Derived values ──────────────────────────────────────────────────────────
   const activeCode     = files[activeFile] ?? ''
@@ -289,6 +291,9 @@ function App() {
             output={output}
             onClear={clearOutput}
             turtleCanvasRef={turtleCanvasRef}
+            guiContainerRef={guiContainerRef}
+            guiRunning={guiRunning}
+            onStopGui={stopGui}
           />
         </div>
       </main>
