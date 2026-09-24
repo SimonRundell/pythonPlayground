@@ -72,6 +72,27 @@ export const CURATED_PACKAGES = [
     category: 'Science',
     pyodide: true,
   },
+  {
+    id: 'sqlite3',
+    name: 'SQLite3',
+    description: 'Lightweight SQL database, built into Python',
+    category: 'Data',
+    pyodide: true,
+  },
+  {
+    id: 'ssl',
+    name: 'SSL',
+    description: 'TLS/SSL support for secure network connections',
+    category: 'Data',
+    pyodide: true,
+  },
+  {
+    id: 'lzma',
+    name: 'LZMA',
+    description: 'LZMA/XZ compression and decompression',
+    category: 'Data',
+    pyodide: true,
+  },
 ]
 
 /** Categories in display order. */
@@ -91,6 +112,9 @@ export const IMPORT_TO_PACKAGE_ID = {
   PIL:        'pillow',
   openpyxl:   'openpyxl',
   networkx:   'networkx',
+  sqlite3:    'sqlite3',
+  ssl:        'ssl',
+  lzma:       'lzma',
 }
 
 /**

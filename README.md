@@ -206,6 +206,9 @@ public/
     test_networkx.py       # NetworkX test
     test_pillow.py         # Pillow image processing test
     test_openpyxl.py       # OpenPyXL in-memory workbook test
+    test_sqlite3.py        # SQLite3 in-memory database test
+    test_ssl.py            # ssl context/protocol test
+    test_lzma.py           # lzma compression round-trip test
     demo_csv_pandas.py     # Multi-file workspace demo — reads students.csv with Pandas
     students.csv           # Sample dataset used by demo_csv_pandas.py
 ```
@@ -246,8 +249,13 @@ The return value from Pyodide's `runPythonAsync` is only captured when the **las
 | SymPy | `sympy` | Maths |
 | OpenPyXL | `openpyxl` | Data |
 | Pillow | `PIL` | Media |
+| SQLite3 | `sqlite3` | Data |
+| SSL | `ssl` | Data |
+| LZMA | `lzma` | Data |
 
 Additional packages can be installed via `micropip` if not listed above.
+
+> **Standard library note:** most of the Python standard library (`time`, `os`, `re`, `json`, `csv`, `datetime`, `hashlib`, `threading`, `pathlib`, and many more) works with no installation at all — it ships as part of the Pyodide runtime. A handful of modules are "unvendored" for size reasons and need an explicit install even though they're stdlib — `sqlite3`, `ssl`, and `lzma` are the ones students are likely to hit, and they're in the curated list above for that reason. `tkinter`, `curses`, and `readline` cannot work in a browser sandbox at all (no display server or terminal) and are not supported.
 
 > **File I/O in the workspace:** Upload `.csv` or `.json` files using the `+` tab button.  They are written to `/workspace/` before each run, so `open('data.csv')` works without any path prefix.  OpenPyXL scripts that need to create `.xlsx` files should use `io.BytesIO` for in-memory workbooks rather than writing to disk.  Pillow images should be displayed via Matplotlib rather than saved to disk.
 
@@ -264,6 +272,13 @@ Uses ESLint with the `eslint-plugin-react-hooks` and `eslint-plugin-react-refres
 ---
 
 ## Changelog
+
+### v0.0.6 — 2026-09-24
+
+**New features**
+
+- **`sqlite3`, `ssl`, and `lzma` added to the curated package list** — these are standard-library modules but Pyodide "unvendors" them for size reasons, so `import sqlite3` (etc.) fails until explicitly installed via `pyodide.loadPackage()`. They now show up in **📦 Packages** (Data category) and auto-install when detected in a loaded `.py` file, same as any other curated package. Added `test_sqlite3.py`, `test_ssl.py`, and `test_lzma.py` to `public/scripts/`.
+- **README standard-library note** — clarified which stdlib modules need no install at all (`time` included — it already worked; a student report of it failing to import could not be reproduced) versus the handful that do (`sqlite3`, `ssl`, `lzma`), and flagged `tkinter`/`curses`/`readline` as unsupported in a browser sandbox.
 
 ### v0.0.5 — 2026-09-15
 
