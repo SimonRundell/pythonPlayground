@@ -155,7 +155,7 @@ def begin_fill():
 
 def end_fill():
     """Close and fill the recorded polygon."""
-    global _filling
+    global _filling, _fill_path
     if _filling and len(_fill_path) >= 3:
         pts = [coord for tx, ty in _fill_path for coord in (_cx(tx), _cy(ty))]
         js._turtle_fill_polygon(json.dumps(pts), _fill_color)

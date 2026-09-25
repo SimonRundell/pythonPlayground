@@ -8,20 +8,46 @@ directly against the DOM via Pyodide's JS bridge — code using the widgets belo
 unmodified against the real guizero.
 
 Widget set so far: App, Box, Text, PushButton, TextBox, Drawing, Slider, Combo, ListBox,
-"auto" and "grid" layouts.
-Not yet implemented: Picture, Waffle, MenuBar, multiple windows.
+Picture, Waffle, MenuBar, "auto" and "grid" layouts.
+Not yet implemented: multiple windows.
 Unsupported keyword arguments are accepted and silently ignored rather than raising, so
 guizero tutorials using them don't hard-crash — they just have no effect. Drawing.image()
 is a no-op stub — there's no image-loading pipeline in this playground.
 
 Slider, Combo and ListBox all follow guizero's convention of calling command with the
-widget's new value automatically — unlike PushButton/TextBox, no args= is needed.
+widget's new value automatically — unlike PushButton/TextBox, no args= is needed. Waffle's
+command is called with (x, y), matching real guizero.
+
+Picture has no general image-upload UI to draw from (the workspace only accepts .py/.csv/
+.json), so its `image=` accepts either a PIL Image object (converted to a PNG data URI) or
+a filename that a script has already written into /workspace/ (e.g. via a PIL Image's own
+.save()) — not an arbitrary URL, deliberately, to avoid loading external content.
 
 License: Creative Commons BY-NC-SA 4.0 — Simon Rundell
 """
+import io
 import json
+import base64
 import js  # Pyodide JS bridge
 from pyodide.ffi import create_proxy
+
+
+def _image_to_data_uri(image):
+    """Convert a PIL Image object, or a /workspace/ filename, into a data: URI."""
+    if isinstance(image, str):
+        with open(image, 'rb') as f:
+            raw = f.read()
+        ext = image.rsplit('.', 1)[-1].lower() if '.' in image else 'png'
+        mime = {'jpg': 'jpeg', 'jpeg': 'jpeg', 'png': 'png', 'gif': 'gif', 'bmp': 'bmp'}.get(ext, 'png')
+        return f'data:image/{mime};base64,{base64.b64encode(raw).decode()}'
+    if hasattr(image, 'save'):
+        buf = io.BytesIO()
+        image.save(buf, format='PNG')
+        return 'data:image/png;base64,' + base64.b64encode(buf.getvalue()).decode()
+    raise TypeError(
+        'Picture image must be a PIL Image object, or the filename of a file already '
+        'saved into /workspace/ — not a URL or raw path.'
+    )
 
 _NO_GRID = -1
 
@@ -318,3 +344,75 @@ class ListBox:
     @enabled.setter
     def enabled(self, value):
         js._gui_set_enabled(self._id, bool(value))
+
+
+class Picture:
+    """Displays an image — a PIL Image object, or a filename already saved into /workspace/."""
+
+    def __init__(self, master, image=None, width=None, height=None, grid=None, **_kw):
+        col, row = _grid_coords(grid)
+        self._image_source = None
+        self._id = js._gui_create_picture(master._id, width, height, col, row)
+        if image is not None:
+            self.image = image
+
+    @property
+    def image(self):
+        return self._image_source
+
+    @image.setter
+    def image(self, value):
+        self._image_source = value
+        js._gui_set_picture_src(self._id, _image_to_data_uri(value))
+
+
+class Waffle:
+    """A grid of coloured squares — for pixel art, grids and simple visualisations."""
+
+    def __init__(self, master, width=10, height=10, dim=10, pad=1, color="white",
+                 command=None, grid=None, **_kw):
+        col, row = _grid_coords(grid)
+        self._proxy = None
+        if command is not None:
+            # guizero calls Waffle's command with the (x, y) of the clicked pixel.
+            self._proxy = create_proxy(command)
+        self._id = js._gui_create_waffle(
+            master._id, int(width), int(height), int(dim), int(pad), str(color),
+            self._proxy, col, row
+        )
+
+    def set_pixel(self, x, y, color):
+        """Set the colour of one pixel."""
+        js._gui_waffle_set_pixel(self._id, int(x), int(y), str(color))
+
+    def get_pixel(self, x, y):
+        """Return the current colour of one pixel."""
+        return js._gui_waffle_get_pixel(self._id, int(x), int(y))
+
+    def set_all(self, color):
+        """Set every pixel to the same colour."""
+        js._gui_waffle_set_all(self._id, str(color))
+
+
+class MenuBar:
+    """A menu bar with dropdown menus, docked to the top of the app regardless of layout."""
+
+    def __init__(self, master, toplevel=None, options=None, **_kw):
+        toplevel = toplevel or []
+        options = options or []
+        self._proxies = []
+        js._gui_create_menubar()
+        for menu_label, items in zip(toplevel, options):
+            menu_id = js._gui_menubar_add_menu(str(menu_label))
+            for item in items:
+                if item is None:
+                    # None marks a separator, same convention as real guizero.
+                    js._gui_menubar_add_separator(menu_id)
+                    continue
+                label = item[0]
+                command = item[1] if len(item) > 1 else None
+                proxy = None
+                if command is not None:
+                    proxy = create_proxy(command)
+                    self._proxies.append(proxy)
+                js._gui_menubar_add_item(menu_id, str(label), proxy)

@@ -20,6 +20,7 @@ export const BASICS_CATEGORIES = [
   'Collections',
   'Functions & Errors',
   'Files',
+  'Graphics & GUIs',
   'Data Science',
 ]
 
@@ -916,6 +917,146 @@ And so, apparently, are you."""
 # TODO: reopen it, use f.readlines() to get a list of lines
 # TODO: print how many lines the file has using len()
 `,
+      },
+    ],
+  },
+
+  // ── Graphics & GUIs ────────────────────────────────────────────────────────
+
+  {
+    id: 17,
+    title: 'Turtle graphics',
+    category: 'Graphics & GUIs',
+    description: 'Draw shapes and patterns by moving a turtle cursor forward and turning it — a classic, visual way to practise loops and angles.',
+    teachingNotes: [
+      'import turtle gives you a virtual pen (the turtle) that moves around a canvas, leaving a trail as it goes.',
+      't.forward(100) moves forward 100 pixels; t.right(90) turns 90° clockwise, t.left(90) turns 90° anticlockwise.',
+      'Repeating a forward/turn pattern inside a for loop is the classic way to draw a regular shape — 4 repeats of forward + right(90) draws a square.',
+      't.penup() lifts the pen so movement leaves no line; t.pendown() puts it back down — useful for moving somewhere new without drawing a line to it.',
+      't.pencolor(...) sets the line colour; t.fillcolor(...) plus begin_fill()/end_fill() fills in a shape.',
+      'Drawings appear in the Graphics tab automatically — turtle works out of the box in this Playground, no installation needed.',
+    ],
+    code: `import turtle
+
+t = turtle.Turtle()
+t.pencolor("blue")
+
+# A square, using a loop instead of repeating the code four times
+for _ in range(4):
+    t.forward(100)
+    t.right(90)
+
+# Move without drawing, then draw a filled triangle
+t.penup()
+t.goto(150, 0)
+t.pendown()
+t.fillcolor("gold")
+t.begin_fill()
+for _ in range(3):
+    t.forward(80)
+    t.left(120)
+t.end_fill()`,
+    challenges: [
+      {
+        id: '17a',
+        title: 'Draw a Star',
+        description: 'Use a for loop (5 repeats) with forward(150) and right(144) to draw a five-pointed star, in a pen colour of your choice.',
+        code: `import turtle
+
+t = turtle.Turtle()
+t.pencolor("purple")
+
+# TODO: use a for loop (range(5)) that calls t.forward(150) then t.right(144)
+`,
+      },
+      {
+        id: '17b',
+        title: 'Growing Spiral',
+        description: 'Draw a spiral by looping forward + turn, increasing the forward distance a little more each time round the loop.',
+        code: `import turtle
+
+t = turtle.Turtle()
+distance = 5
+
+# TODO: use a for loop (try range(60)) that, each time round:
+#   - moves forward by 'distance'
+#   - turns right by 91 degrees
+#   - increases 'distance' by 3
+`,
+      },
+    ],
+  },
+
+  {
+    id: 18,
+    title: 'GUIs with guizero (tkinter)',
+    category: 'Graphics & GUIs',
+    description: 'Build simple windows, buttons and text boxes using guizero — the same beginner-friendly GUI library, built on tkinter, taught at GCSE.',
+    teachingNotes: [
+      'tkinter is Python\'s standard GUI toolkit, but it needs a real desktop window to draw into — something a browser tab can\'t provide, so import tkinter directly won\'t work in this Playground.',
+      'guizero (from guizero import ...) is a simplified wrapper around tkinter, and the version built into this Playground works with no installation — the same code also runs unmodified on a real desktop.',
+      'Every guizero app starts with App(title=..., width=..., height=...), then widgets like Text, PushButton and TextBox are created inside it.',
+      'command=my_function connects a button click to a Python function — that function runs every time the button is pressed.',
+      'app.display() starts the app running and keeps it open, the same way it would on a desktop — switch to the GUI tab to see and use it, and press the Stop button there when you\'re done.',
+    ],
+    code: `from guizero import App, Text, PushButton
+
+app = App(title="Click Counter", width=250, height=150)
+
+count = 0
+counter_text = Text(app, text="0", size=24)
+
+def add_one():
+    global count
+    count += 1
+    counter_text.value = str(count)
+
+PushButton(app, command=add_one, text="Click me!")
+
+app.display()`,
+    challenges: [
+      {
+        id: '18a',
+        title: 'Mood Button',
+        description: 'Build a button that cycles through a list of moods each time it\'s clicked, updating a Text widget to show the current one.',
+        code: `from guizero import App, Text, PushButton
+
+moods = ["Happy", "Sleepy", "Excited", "Curious"]
+index = 0
+
+app = App(title="Mood Changer", width=250, height=150)
+mood_text = Text(app, text=moods[0], size=20)
+
+def next_mood():
+    global index
+    # TODO: increase index by 1, wrapping back to 0 after the last mood
+    # TODO: update mood_text.value to moods[index]
+    pass
+
+PushButton(app, command=next_mood, text="Next mood")
+
+app.display()`,
+      },
+      {
+        id: '18b',
+        title: 'Simple Greeter',
+        description: 'Combine a TextBox and a PushButton — clicking the button should read the name typed in and show a friendly greeting using it.',
+        code: `from guizero import App, Text, TextBox, PushButton
+
+app = App(title="Greeter", width=280, height=180)
+
+Text(app, text="Enter your name:")
+name_box = TextBox(app)
+greeting = Text(app, text="")
+
+def greet():
+    # TODO: read name_box.value
+    # TODO: set greeting.value to a friendly message using the name
+    pass
+
+PushButton(app, command=greet, text="Greet me")
+
+app.display()`,
       },
     ],
   },

@@ -14,14 +14,14 @@ A browser-based Python IDE that runs entirely client-side — no server, no inst
 | **ZIP Load / Save** | Load a ZIP to restore a full project; Save bundles all workspace files into a ZIP automatically |
 | **Module & Data File Support** | All workspace files are written to `/workspace/` before each run — `import helpers` and `open('data.csv')` work out of the box |
 | **Turtle Graphics** | Custom canvas-based turtle backend; `import turtle` works out of the box |
-| **guizero GUI** | `App`, `Box`, `Text`, `PushButton`, `TextBox`, `Drawing`, `Slider`, `Combo`, `ListBox` — the simplified GUI library taught in UK GCSE/KS3 CS, reimplemented against the DOM; `from guizero import ...` works out of the box |
+| **guizero GUI** | `App`, `Box`, `Text`, `PushButton`, `TextBox`, `Drawing`, `Slider`, `Combo`, `ListBox`, `Picture`, `Waffle`, `MenuBar` — the simplified GUI library taught in UK GCSE/KS3 CS, reimplemented against the DOM; `from guizero import ...` works out of the box |
 | **Matplotlib** | Charts rendered to PNG and displayed in the Graphics tab after `plt.show()` |
 | **Package Manager** | One-click install of scientific packages (NumPy, Pandas, SciPy, scikit-learn, and more) via micropip |
 | **Auto-install on Load** | Opening a `.py` file automatically detects and installs any required curated packages |
 | **`input()` modal** | Python's `input()` opens a styled modal dialog; no native browser prompt |
 | **Tabbed output** | Separate Console, Graphics and GUI tabs; auto-switches to Graphics or GUI when their respective output is produced |
 | **Algorithms Drawer** | Sliding reference panel with searchable index and full-detail modal for each algorithm, from *The Little Book of Algorithms 2.0* by William Lau (CC BY-NC-SA 4.0) |
-| **Python Basics Drawer** | Step-by-step beginner walkthrough — 16 topics from "What is a variable?" through to NumPy/Pandas/Matplotlib, each with teaching notes, an example, and two challenges |
+| **Python Basics Drawer** | Step-by-step beginner walkthrough — 18 topics from "What is a variable?" through turtle graphics, guizero GUIs, and NumPy/Pandas/Matplotlib, each with teaching notes, an example, and two challenges |
 | **Playground Reset** | One-click reset clears all workspace files, restores Hello World, and fully reinitialises the Python environment |
 
 ---
@@ -172,7 +172,56 @@ app.display()
 
 `ListBox` renders as a real scrollable list (via `<select size="N">`), not a dropdown — closer to how guizero's own tkinter Listbox looks than an HTML `<select>` would by default. With `multiselect=True`, `.value` returns a list; otherwise it returns a single item (or `None` if nothing is selected).
 
-**Widget set so far:** `App`, `Box`, `Text`, `PushButton`, `TextBox`, `Drawing`, `Slider`, `Combo`, `ListBox`, with `layout="auto"` (stacked) or `layout="grid"` (using each widget's `grid=[column, row]`). Not yet supported: `Picture`, `Waffle`, `MenuBar`, and multiple windows. `Drawing.image()` is a no-op stub — there's no image-loading pipeline in this playground. Unrecognised keyword arguments are accepted and silently ignored rather than raising, so tutorials using not-yet-supported options degrade gracefully instead of crashing.
+`Waffle` gives you a grid of clickable coloured squares — good for pixel art, simple grid-based games, or visualising 2D data. Its `command` is called with the `(x, y)` of the clicked pixel:
+
+```python
+from guizero import App, Waffle
+
+app = App(title="Pixels", width=220, height=220)
+
+def toggle(x, y):
+    current = grid.get_pixel(x, y)
+    grid.set_pixel(x, y, "white" if current == "blue" else "blue")
+
+grid = Waffle(app, width=8, height=8, dim=20, command=toggle)
+
+app.display()
+```
+
+`MenuBar` adds a dropdown menu bar, always docked to the top of the app regardless of where in the script it's constructed or what layout the app uses:
+
+```python
+from guizero import App, Text, MenuBar
+
+app = App(title="Menus", width=280, height=140)
+status = Text(app, text="Pick a menu item")
+
+def choose(label):
+    return lambda: setattr(status, "value", f"You chose: {label}")
+
+MenuBar(app, toplevel=["File"], options=[[("New", choose("New")), None, ("Quit", choose("Quit"))]])
+
+app.display()
+```
+
+`None` in an `options` list is a separator, matching real guizero.
+
+`Picture` displays a PIL Image object directly, or a filename a script has already saved into `/workspace/` (e.g. via `image.save("photo.png")`) — there's no general image-upload UI in this playground (the workspace only accepts `.py`/`.csv`/`.json`), so a bare filename pointing at a file the student hasn't created themselves won't work, and arbitrary URLs are deliberately not supported:
+
+```python
+from PIL import Image, ImageDraw
+from guizero import App, Picture
+
+img = Image.new("RGB", (150, 100), "white")
+ImageDraw.Draw(img).ellipse([10, 10, 140, 90], fill="#4caf50")
+
+app = App(title="Picture", width=200, height=150)
+Picture(app, image=img)
+
+app.display()
+```
+
+**Widget set so far:** `App`, `Box`, `Text`, `PushButton`, `TextBox`, `Drawing`, `Slider`, `Combo`, `ListBox`, `Picture`, `Waffle`, `MenuBar`, with `layout="auto"` (stacked) or `layout="grid"` (using each widget's `grid=[column, row]`). Not yet supported: multiple windows. `Drawing.image()` is a no-op stub — there's no image-loading pipeline in this playground. Unrecognised keyword arguments are accepted and silently ignored rather than raising, so tutorials using not-yet-supported options degrade gracefully instead of crashing.
 
 ### Matplotlib
 
@@ -228,7 +277,7 @@ Click **Load into Editor →** on any example or challenge to transfer the code 
 
 ### Python Basics Walkthrough
 
-Click **🔰 Python Basics** in the toolbar to open a second sliding drawer — a systematic, beginner-friendly introduction to Python for students who haven't coded before. It uses the same drawer/detail-modal mechanism as the Algorithms drawer (opening one closes the other) and covers 16 topics in teaching order, grouped into categories:
+Click **🔰 Python Basics** in the toolbar to open a second sliding drawer — a systematic, beginner-friendly introduction to Python for students who haven't coded before. It uses the same drawer/detail-modal mechanism as the Algorithms drawer (opening one closes the other) and covers 18 topics in teaching order, grouped into categories:
 
 - **Basics** — What is a variable?, Data types & casting, Numbers & operators, Strings & f-strings, print() and input()
 - **Logic** — Booleans & comparison operators, if/elif/else
@@ -236,6 +285,7 @@ Click **🔰 Python Basics** in the toolbar to open a second sliding drawer — 
 - **Collections** — Lists, Dictionaries, Tuples & Sets
 - **Functions & Errors** — Functions, try/except error handling
 - **Files** — Reading & writing files
+- **Graphics & GUIs** — Turtle graphics, GUIs with guizero (tkinter)
 - **Data Science** — Intro to NumPy, Pandas & Matplotlib
 
 Each topic includes teaching notes, an annotated example, and two challenges with starter code — several of the foundational topics (variables, data types, lists, dictionaries, for loops, functions) also include a small inline diagram. As with the Algorithms drawer, **Load into Editor →** and **Load Starter Code →** transfer code straight into the active file.
@@ -286,6 +336,9 @@ public/
     demo_guizero_textbox.py # guizero GUI demo — live TextBox-to-Text binding
     demo_guizero_drawing.py # guizero GUI demo — Drawing canvas shapes and text
     demo_guizero_selectors.py # guizero GUI demo — Slider, Combo, multiselect ListBox
+    demo_guizero_waffle.py  # guizero GUI demo — clickable Waffle pixel grid
+    demo_guizero_menubar.py # guizero GUI demo — MenuBar dropdown menus
+    demo_guizero_picture.py # guizero GUI demo — Picture from a PIL Image
     test_matplotlib.py     # Matplotlib chart rendering test
     test_numpy.py          # NumPy test
     test_pandas.py         # Pandas test
@@ -326,6 +379,10 @@ The interesting problem is `app.display()`: in real guizero this call blocks unt
 Button and TextBox `command=` callbacks are kept alive across multiple events using `pyodide.ffi.create_proxy`; those proxies are explicitly destroyed before each new Run (and on Playground Reset) to avoid leaking references between scripts. `TextBox.value` is read live from the DOM input on every access rather than cached in Python, since the student may have typed since Python last touched the widget. `Drawing` widgets hold their own 2D canvas context and draw immediately on each method call, the same direct-drawing approach `turtle.py` already uses — no virtual scene graph, no batching.
 
 `Slider`, `Combo` and `ListBox` follow guizero's own convention: their `command` proxy is called directly with the widget's new value (a JS number, string, or array, auto-converted by Pyodide into a Python int/str/list) rather than through the no-args wrapper `PushButton`/`TextBox` use — there's no `args=` support for these three, matching real guizero. `ListBox` is a native `<select size="N">` rather than a dropdown, which is what gives it guizero's always-visible scrollable-list look without any custom rendering.
+
+`MenuBar` needed a small architecture change: the GUI tab's root element now holds two children — an empty `menuBarSlot` (populated only if `MenuBar()` is called) and the actual `layoutContainer` that every other widget's `grid=`/`layout=` positioning applies to. `MenuBar()` always inserts into `menuBarSlot`, so it renders docked to the top regardless of when in the script it's constructed or whether the app uses `layout="auto"` or `layout="grid"` — it never has to compete for a grid cell with a widget a student explicitly placed at `grid=[0, 0]`. Because a MenuBar's item callbacks can't be handed across the Pyodide bridge as one nested Python structure (a dict containing a `PyProxy` function isn't JSON-serialisable, and Pyodide won't auto-convert nested containers), it's built incrementally instead — one bridge call for the bar itself, one per top-level menu, one per item — mirroring the flat-arguments style every other widget already uses.
+
+`Picture` and `Drawing.image()` share the same constraint: this playground has no general image-upload pipeline (workspace uploads are `.py`/`.csv`/`.json` only), so `Picture.image=` only accepts a PIL Image object (converted to a PNG data URI the same way matplotlib figures are captured) or a filename already sitting in Pyodide's `/workspace/` virtual filesystem — not an arbitrary URL, which was a deliberate choice to avoid the playground loading external content.
 
 ---
 
@@ -373,6 +430,23 @@ Uses ESLint with the `eslint-plugin-react-hooks` and `eslint-plugin-react-refres
 ---
 
 ## Changelog
+
+### v0.0.12 — 2026-09-25
+
+**New features**
+
+- **Python Basics: Turtle graphics & GUIs with guizero (tkinter)** — two new topics in a new "Graphics & GUIs" category, covering turtle drawing (loops, angles, fill) and building a simple guizero app (App/Text/PushButton/TextBox), each with teaching notes, a working example and two challenges. Explicitly explains why `import tkinter` doesn't work in a browser tab and how guizero fills that gap.
+
+**Bug fixes**
+
+- **`turtle.end_fill()` crashed with `UnboundLocalError`** — found while writing the new Turtle graphics example. `_fill_path` was reassigned inside `end_fill()` without being declared `global`, so Python treated it as an unbound local on the read one line above. Any script calling `begin_fill()`/`end_fill()` (directly or via the `Turtle` class) was affected — a real pre-existing bug, not caused by this change.
+
+### v0.0.11 — 2026-09-25
+
+**New features**
+
+- **guizero `Picture`, `Waffle`, `MenuBar` (Phase 5)** — completes the originally scoped guizero widget set. `Waffle` is a grid of clickable coloured squares (`command` called with the clicked `(x, y)`) for pixel art and grid-based exercises. `MenuBar` adds dropdown menus always docked to the top of the app, regardless of construction order or layout mode — built via incremental bridge calls since a nested Python structure holding `PyProxy` callbacks can't cross the Pyodide bridge as one argument. `Picture` displays a PIL Image object or a `/workspace/` filename (no arbitrary URLs — there's no general image-upload pipeline in this playground yet). Added `demo_guizero_waffle.py`, `demo_guizero_menubar.py`, `demo_guizero_picture.py`.
+- This completes the originally scoped Phase 1–5 guizero build.
 
 ### v0.0.10 — 2026-09-25
 

@@ -14,14 +14,17 @@
  * @license Creative Commons BY-NC-SA 4.0 - Simon Rundell
  */
 
-let rootContainer = null
+let rootContainer = null     // outer element React mounted — holds menuBarSlot + layoutContainer
+let menuBarSlot = null       // always the first child of rootContainer, empty until MenuBar() is used
+let layoutContainer = null   // second child — the actual "root" widgets are placed into
 let onRunningChange = null   // (running: boolean) => void, informs React for the Stop button
+let documentClickBound = false
 
 let idCounter = 0
 let guiWasUsed = false
 let stopResolve = null
 
-/** id -> { el: HTMLElement, proxy?: PyProxy } */
+/** id -> { el: HTMLElement, proxy?: PyProxy, proxies?: PyProxy[] } */
 const widgets = new Map()
 /** id ('root' or a Box id) -> its declared layout ('auto' | 'grid') */
 const layouts = new Map()
@@ -33,7 +36,7 @@ function nextId() {
 
 /** Resolve a parent id ('root' or a Box id) to its DOM element. */
 function containerFor(parentId) {
-  if (parentId === 'root') return rootContainer
+  if (parentId === 'root') return layoutContainer || rootContainer
   const w = widgets.get(parentId)
   return w ? w.el : rootContainer
 }
@@ -79,12 +82,17 @@ function resetState() {
   }
   widgets.forEach((w) => {
     if (w.proxy && typeof w.proxy.destroy === 'function') w.proxy.destroy()
+    if (Array.isArray(w.proxies)) {
+      w.proxies.forEach((p) => { if (p && typeof p.destroy === 'function') p.destroy() })
+    }
   })
   widgets.clear()
   layouts.clear()
   idCounter = 0
   guiWasUsed = false
   if (rootContainer) rootContainer.innerHTML = ''
+  menuBarSlot = null
+  layoutContainer = null
 }
 
 /**
@@ -98,6 +106,15 @@ export function initGuiApi(container, runningChangeCb) {
   onRunningChange = runningChangeCb || null
   registerGlobals()
   resetState()
+  if (!documentClickBound) {
+    document.addEventListener('click', closeAllMenus)
+    documentClickBound = true
+  }
+}
+
+/** Close any open MenuBar dropdown — bound once on document, and called on every item click. */
+function closeAllMenus() {
+  document.querySelectorAll('.gui-menu-panel.open').forEach((p) => p.classList.remove('open'))
 }
 
 /** Register all window._gui_* functions used by the Python guizero module. */
@@ -109,7 +126,19 @@ function registerGlobals() {
       rootContainer.style.width = `${width}px`
       rootContainer.style.minHeight = `${height}px`
       rootContainer.style.background = bg || '#f5f5f5'
-      applyLayout(rootContainer, layout)
+      rootContainer.style.display = 'flex'
+      rootContainer.style.flexDirection = 'column'
+
+      // menuBarSlot stays empty (and invisible) until MenuBar() populates it —
+      // it's a separate slot so a MenuBar always docks to the top regardless
+      // of the App's own layout mode or when in the script it's constructed.
+      menuBarSlot = document.createElement('div')
+      menuBarSlot.className = 'gui-menubar-slot'
+      rootContainer.appendChild(menuBarSlot)
+
+      layoutContainer = document.createElement('div')
+      applyLayout(layoutContainer, layout)
+      rootContainer.appendChild(layoutContainer)
     }
     layouts.set('root', layout)
   }
@@ -427,6 +456,133 @@ function registerGlobals() {
     if (!w) return
     const values = new Set(JSON.parse(valuesJson))
     ;[...w.el.options].forEach((o) => { o.selected = values.has(o.value) })
+  }
+
+  window._gui_create_picture = (parentId, width, height, col, row) => {
+    const id = nextId()
+    const el = document.createElement('img')
+    el.className = 'gui-picture'
+    if (width) el.style.width = `${width}px`
+    if (height) el.style.height = `${height}px`
+    placeInParent(el, parentId, col, row)
+    widgets.set(id, { el })
+    return id
+  }
+
+  window._gui_set_picture_src = (id, dataUri) => {
+    const w = widgets.get(id)
+    if (w) w.el.src = dataUri
+  }
+
+  window._gui_create_waffle = (parentId, width, height, dim, pad, color, onClick, col, row) => {
+    const id = nextId()
+    const el = document.createElement('div')
+    el.className = 'gui-waffle'
+    el.style.gridTemplateColumns = `repeat(${width}, ${dim}px)`
+    el.style.gridTemplateRows = `repeat(${height}, ${dim}px)`
+    el.style.gap = `${pad}px`
+    const cells = []
+    for (let y = 0; y < height; y++) {
+      const rowCells = []
+      for (let x = 0; x < width; x++) {
+        const cell = document.createElement('div')
+        cell.className = 'gui-waffle-pixel'
+        cell.style.background = color || '#ffffff'
+        if (onClick) {
+          cell.addEventListener('click', () => {
+            try {
+              onClick(x, y)
+            } catch (err) {
+              console.error('guizero waffle handler error:', err)
+            }
+          })
+        }
+        el.appendChild(cell)
+        rowCells.push(cell)
+      }
+      cells.push(rowCells)
+    }
+    placeInParent(el, parentId, col, row)
+    widgets.set(id, { el, proxy: onClick, cells })
+    return id
+  }
+
+  window._gui_waffle_set_pixel = (id, x, y, color) => {
+    const w = widgets.get(id)
+    if (w && w.cells[y] && w.cells[y][x]) w.cells[y][x].style.background = color
+  }
+
+  window._gui_waffle_get_pixel = (id, x, y) => {
+    const w = widgets.get(id)
+    return (w && w.cells[y] && w.cells[y][x]) ? w.cells[y][x].style.background : null
+  }
+
+  window._gui_waffle_set_all = (id, color) => {
+    const w = widgets.get(id)
+    if (!w) return
+    w.cells.forEach((rowCells) => rowCells.forEach((cell) => { cell.style.background = color }))
+  }
+
+  /**
+   * MenuBar is built incrementally (shell, then per-menu, then per-item) rather than
+   * from one nested structure — a Python list/dict containing PyProxy callbacks can't
+   * cross the bridge as a single argument the way the flat primitives above can.
+   */
+  window._gui_create_menubar = () => {
+    if (menuBarSlot) menuBarSlot.innerHTML = ''
+    widgets.set('menubar', { el: menuBarSlot })
+  }
+
+  window._gui_menubar_add_menu = (label) => {
+    const id = nextId()
+    const wrap = document.createElement('div')
+    wrap.className = 'gui-menu'
+    const trigger = document.createElement('button')
+    trigger.type = 'button'
+    trigger.className = 'gui-menu-trigger'
+    trigger.textContent = label
+    const panel = document.createElement('div')
+    panel.className = 'gui-menu-panel'
+    trigger.addEventListener('click', (e) => {
+      e.stopPropagation()
+      const isOpen = panel.classList.contains('open')
+      closeAllMenus()
+      if (!isOpen) panel.classList.add('open')
+    })
+    wrap.appendChild(trigger)
+    wrap.appendChild(panel)
+    if (menuBarSlot) menuBarSlot.appendChild(wrap)
+    widgets.set(id, { el: panel, proxies: [] })
+    return id
+  }
+
+  window._gui_menubar_add_item = (menuId, label, onClick) => {
+    const w = widgets.get(menuId)
+    if (!w) return
+    const item = document.createElement('button')
+    item.type = 'button'
+    item.className = 'gui-menu-item'
+    item.textContent = label
+    item.addEventListener('click', () => {
+      closeAllMenus()
+      if (onClick) {
+        try {
+          onClick()
+        } catch (err) {
+          console.error('guizero menu handler error:', err)
+        }
+      }
+    })
+    w.el.appendChild(item)
+    if (onClick) w.proxies.push(onClick)
+  }
+
+  window._gui_menubar_add_separator = (menuId) => {
+    const w = widgets.get(menuId)
+    if (!w) return
+    const sep = document.createElement('div')
+    sep.className = 'gui-menu-separator'
+    w.el.appendChild(sep)
   }
 
   /** Called by App.display() — resolves only when Stop is pressed or destroy() runs. */

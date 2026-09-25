@@ -486,6 +486,76 @@ body {
 .gui-listbox { padding: 0; }
 .gui-listbox option { padding: 0.25rem 0.5rem; }
 
+.gui-picture {
+  display: block;
+  max-width: 100%;
+  border-radius: 4px;
+}
+
+.gui-waffle {
+  display: grid;
+}
+.gui-waffle-pixel {
+  border-radius: 2px;
+  cursor: pointer;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+.gui-menubar-slot:empty { display: none; }
+.gui-menu {
+  position: relative;
+  display: inline-block;
+}
+.gui-menubar-slot {
+  display: flex;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  width: 100%;
+  box-sizing: border-box;
+}
+.gui-menu-trigger {
+  background: none;
+  border: none;
+  padding: 0.5rem 0.9rem;
+  cursor: pointer;
+  font-family: 'Trebuchet MS', sans-serif;
+  font-size: 0.85rem;
+  color: #24292f;
+}
+.gui-menu-trigger:hover { background: #eaecef; }
+.gui-menu-panel {
+  display: none;
+  position: absolute;
+  top: 100%;
+  left: 0;
+  min-width: 140px;
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.12);
+  z-index: 10;
+  flex-direction: column;
+  padding: 0.25rem 0;
+}
+.gui-menu-panel.open { display: flex; }
+.gui-menu-item {
+  background: none;
+  border: none;
+  text-align: left;
+  padding: 0.4rem 1rem;
+  cursor: pointer;
+  font-family: 'Trebuchet MS', sans-serif;
+  font-size: 0.85rem;
+  color: #24292f;
+  white-space: nowrap;
+}
+.gui-menu-item:hover { background: var(--surface); }
+.gui-menu-separator {
+  height: 1px;
+  background: var(--border);
+  margin: 0.25rem 0;
+}
+
 /* ── Confirm Modal ─────────────────────────────────────────────────────── */
 
 .modal-confirm {

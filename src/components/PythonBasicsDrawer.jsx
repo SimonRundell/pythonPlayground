@@ -19,6 +19,7 @@ const CATEGORY_COLOURS = {
   'Collections':         '#22c55e',
   'Functions & Errors':  '#ef4444',
   'Files':               '#eab308',
+  'Graphics & GUIs':     '#14b8a6',
   'Data Science':        '#ec4899',
 }
 
