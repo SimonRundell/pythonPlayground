@@ -318,6 +318,117 @@ function registerGlobals() {
     if (w && w.ctx) w.ctx.clearRect(0, 0, w.el.width, w.el.height)
   }
 
+  window._gui_create_slider = (parentId, start, end, horizontal, onChange, col, row) => {
+    const id = nextId()
+    const el = document.createElement('input')
+    el.type = 'range'
+    el.min = start
+    el.max = end
+    el.value = start
+    el.className = horizontal ? 'gui-slider' : 'gui-slider gui-slider-vertical'
+    if (onChange) {
+      el.addEventListener('input', () => {
+        try {
+          onChange(parseInt(el.value, 10))
+        } catch (err) {
+          console.error('guizero slider handler error:', err)
+        }
+      })
+    }
+    placeInParent(el, parentId, col, row)
+    widgets.set(id, { el, proxy: onChange })
+    return id
+  }
+
+  window._gui_get_slider_value = (id) => {
+    const w = widgets.get(id)
+    return w ? parseInt(w.el.value, 10) : 0
+  }
+
+  window._gui_set_slider_value = (id, value) => {
+    const w = widgets.get(id)
+    if (w) w.el.value = value
+  }
+
+  window._gui_create_combo = (parentId, optionsJson, selected, onChange, col, row) => {
+    const id = nextId()
+    const el = document.createElement('select')
+    el.className = 'gui-combo'
+    JSON.parse(optionsJson).forEach((opt) => {
+      const optEl = document.createElement('option')
+      optEl.value = opt
+      optEl.textContent = opt
+      el.appendChild(optEl)
+    })
+    if (selected != null) el.value = selected
+    if (onChange) {
+      el.addEventListener('change', () => {
+        try {
+          onChange(el.value)
+        } catch (err) {
+          console.error('guizero combo handler error:', err)
+        }
+      })
+    }
+    placeInParent(el, parentId, col, row)
+    widgets.set(id, { el, proxy: onChange })
+    return id
+  }
+
+  window._gui_get_combo_value = (id) => {
+    const w = widgets.get(id)
+    return w ? w.el.value : ''
+  }
+
+  window._gui_set_combo_value = (id, value) => {
+    const w = widgets.get(id)
+    if (w) w.el.value = value
+  }
+
+  window._gui_create_listbox = (parentId, itemsJson, selectedJson, multiselect, width, height, onChange, col, row) => {
+    const id = nextId()
+    const el = document.createElement('select')
+    el.className = 'gui-listbox'
+    el.multiple = !!multiselect
+    const items = JSON.parse(itemsJson)
+    const selected = new Set(JSON.parse(selectedJson))
+    items.forEach((item) => {
+      const optEl = document.createElement('option')
+      optEl.value = item
+      optEl.textContent = item
+      if (selected.has(item)) optEl.selected = true
+      el.appendChild(optEl)
+    })
+    el.size = height || Math.max(3, Math.min(items.length, 8))
+    if (width) el.style.width = `${width}ch`
+    if (onChange) {
+      el.addEventListener('change', () => {
+        try {
+          const values = [...el.selectedOptions].map((o) => o.value)
+          onChange(multiselect ? values : (values[0] ?? null))
+        } catch (err) {
+          console.error('guizero listbox handler error:', err)
+        }
+      })
+    }
+    placeInParent(el, parentId, col, row)
+    widgets.set(id, { el, proxy: onChange })
+    return id
+  }
+
+  window._gui_get_listbox_value = (id) => {
+    const w = widgets.get(id)
+    if (!w) return []
+    return [...w.el.selectedOptions].map((o) => o.value)
+  }
+
+  window._gui_set_listbox_value = (id, valuesJson) => {
+    const w = widgets.get(id)
+    if (!w) return
+    const values = new Set(JSON.parse(valuesJson))
+    ;[...w.el.options].forEach((o) => { o.selected = values.has(o.value) })
+  }
+
   /** Called by App.display() — resolves only when Stop is pressed or destroy() runs. */
   window._gui_await_stop = () => {
     if (onRunningChange) onRunningChange(true)

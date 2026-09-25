@@ -7,11 +7,15 @@ server and can't run in a browser tab, so this module reimplements the guizero A
 directly against the DOM via Pyodide's JS bridge — code using the widgets below runs
 unmodified against the real guizero.
 
-Widget set so far: App, Box, Text, PushButton, TextBox, Drawing, "auto" and "grid" layouts.
-Not yet implemented: Slider, ListBox, Combo, Picture, Waffle, MenuBar, multiple windows.
+Widget set so far: App, Box, Text, PushButton, TextBox, Drawing, Slider, Combo, ListBox,
+"auto" and "grid" layouts.
+Not yet implemented: Picture, Waffle, MenuBar, multiple windows.
 Unsupported keyword arguments are accepted and silently ignored rather than raising, so
 guizero tutorials using them don't hard-crash — they just have no effect. Drawing.image()
 is a no-op stub — there's no image-loading pipeline in this playground.
+
+Slider, Combo and ListBox all follow guizero's convention of calling command with the
+widget's new value automatically — unlike PushButton/TextBox, no args= is needed.
 
 License: Creative Commons BY-NC-SA 4.0 — Simon Rundell
 """
@@ -207,3 +211,110 @@ class Drawing:
     def clear(self):
         """Clear everything drawn on this canvas."""
         js._gui_drawing_clear(self._id)
+
+
+class Slider:
+    """A draggable slider for picking a whole number in a range."""
+
+    def __init__(self, master, start=0, end=100, horizontal=True, command=None,
+                 width=None, height=None, grid=None, **_kw):
+        col, row = _grid_coords(grid)
+        self._proxy = None
+        if command is not None:
+            # guizero calls Slider's command with the new value as its one argument.
+            self._proxy = create_proxy(command)
+        self._id = js._gui_create_slider(
+            master._id, int(start), int(end), bool(horizontal), self._proxy, col, row
+        )
+
+    @property
+    def value(self):
+        return js._gui_get_slider_value(self._id)
+
+    @value.setter
+    def value(self, v):
+        js._gui_set_slider_value(self._id, int(v))
+
+    @property
+    def enabled(self):
+        return bool(js._gui_get_enabled(self._id))
+
+    @enabled.setter
+    def enabled(self, value):
+        js._gui_set_enabled(self._id, bool(value))
+
+
+class Combo:
+    """A dropdown list the student picks one option from."""
+
+    def __init__(self, master, options=None, selected=None, command=None,
+                 width=None, grid=None, **_kw):
+        col, row = _grid_coords(grid)
+        opts = [str(o) for o in (options or [])]
+        self._proxy = None
+        if command is not None:
+            # guizero calls Combo's command with the newly selected value.
+            self._proxy = create_proxy(command)
+        self._id = js._gui_create_combo(
+            master._id, json.dumps(opts),
+            str(selected) if selected is not None else None,
+            self._proxy, col, row
+        )
+
+    @property
+    def value(self):
+        return js._gui_get_combo_value(self._id)
+
+    @value.setter
+    def value(self, v):
+        js._gui_set_combo_value(self._id, str(v))
+
+    @property
+    def enabled(self):
+        return bool(js._gui_get_enabled(self._id))
+
+    @enabled.setter
+    def enabled(self, value):
+        js._gui_set_enabled(self._id, bool(value))
+
+
+class ListBox:
+    """A scrollable list the student picks one (or more, with multiselect=True) items from."""
+
+    def __init__(self, master, items=None, selected=None, command=None, multiselect=False,
+                 width=None, height=None, grid=None, **_kw):
+        col, row = _grid_coords(grid)
+        opts = [str(i) for i in (items or [])]
+        self._multiselect = bool(multiselect)
+        self._proxy = None
+        if command is not None:
+            # guizero calls ListBox's command with the newly selected value
+            # (a list of values when multiselect=True).
+            self._proxy = create_proxy(command)
+        sel = selected if selected is not None else []
+        if not isinstance(sel, (list, tuple)):
+            sel = [sel]
+        self._id = js._gui_create_listbox(
+            master._id, json.dumps(opts), json.dumps([str(s) for s in sel]),
+            self._multiselect, width, height, self._proxy, col, row
+        )
+
+    @property
+    def value(self):
+        selected = list(js._gui_get_listbox_value(self._id))
+        if self._multiselect:
+            return selected
+        return selected[0] if selected else None
+
+    @value.setter
+    def value(self, v):
+        vals = v if isinstance(v, (list, tuple)) else [v]
+        js._gui_set_listbox_value(self._id, json.dumps([str(x) for x in vals]))
+
+    @property
+    def enabled(self):
+        return bool(js._gui_get_enabled(self._id))
+
+    @enabled.setter
+    def enabled(self, value):
+        js._gui_set_enabled(self._id, bool(value))

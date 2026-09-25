@@ -459,6 +459,33 @@ body {
   border-radius: 4px;
 }
 
+.gui-slider {
+  width: 180px;
+  accent-color: var(--header-bg);
+}
+.gui-slider-vertical {
+  writing-mode: vertical-lr;
+  direction: rtl;
+  width: 24px;
+  height: 140px;
+}
+.gui-slider:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.gui-combo,
+.gui-listbox {
+  font-family: 'Trebuchet MS', sans-serif;
+  font-size: 0.85rem;
+  padding: 0.35rem 0.5rem;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: #fff;
+  color: #24292f;
+}
+.gui-combo:disabled,
+.gui-listbox:disabled { opacity: 0.5; cursor: not-allowed; background: var(--surface); }
+.gui-listbox { padding: 0; }
+.gui-listbox option { padding: 0.25rem 0.5rem; }
+
 /* ── Confirm Modal ─────────────────────────────────────────────────────── */
 
 .modal-confirm {

@@ -14,7 +14,7 @@ A browser-based Python IDE that runs entirely client-side — no server, no inst
 | **ZIP Load / Save** | Load a ZIP to restore a full project; Save bundles all workspace files into a ZIP automatically |
 | **Module & Data File Support** | All workspace files are written to `/workspace/` before each run — `import helpers` and `open('data.csv')` work out of the box |
 | **Turtle Graphics** | Custom canvas-based turtle backend; `import turtle` works out of the box |
-| **guizero GUI (Phase 1)** | `App`, `Box`, `Text`, `PushButton` — the simplified GUI library taught in UK GCSE/KS3 CS, reimplemented against the DOM; `from guizero import ...` works out of the box |
+| **guizero GUI** | `App`, `Box`, `Text`, `PushButton`, `TextBox`, `Drawing`, `Slider`, `Combo`, `ListBox` — the simplified GUI library taught in UK GCSE/KS3 CS, reimplemented against the DOM; `from guizero import ...` works out of the box |
 | **Matplotlib** | Charts rendered to PNG and displayed in the Graphics tab after `plt.show()` |
 | **Package Manager** | One-click install of scientific packages (NumPy, Pandas, SciPy, scikit-learn, and more) via micropip |
 | **Auto-install on Load** | Opening a `.py` file automatically detects and installs any required curated packages |
@@ -147,7 +147,32 @@ canvas.text(10, 100, "Shapes!", color="#1a3a5c", size=14)
 app.display()
 ```
 
-**Widget set so far:** `App`, `Box`, `Text`, `PushButton`, `TextBox`, `Drawing`, with `layout="auto"` (stacked) or `layout="grid"` (using each widget's `grid=[column, row]`). Not yet supported: `Slider`, `ListBox`, `Combo`, `Picture`, `MenuBar`, and multiple windows. `Drawing.image()` is a no-op stub — there's no image-loading pipeline in this playground. Unrecognised keyword arguments are accepted and silently ignored rather than raising, so tutorials using not-yet-supported options degrade gracefully instead of crashing.
+`Slider`, `Combo` and `ListBox` all follow guizero's convention of calling `command` with the widget's new value automatically — no `args=` needed, unlike `PushButton`/`TextBox`:
+
+```python
+from guizero import App, Text, Slider, Combo, ListBox
+
+app = App(title="Pick one", width=260, height=300)
+
+def on_slide(value):
+    slider_label.value = str(value)
+
+Text(app, text="Volume")
+slider_label = Text(app, text="50")
+Slider(app, start=0, end=100, command=on_slide)
+
+Text(app, text="Size")
+Combo(app, options=["Small", "Medium", "Large"], selected="Medium")
+
+Text(app, text="Toppings")
+ListBox(app, items=["Cheese", "Pepperoni", "Olives"], multiselect=True, height=3)
+
+app.display()
+```
+
+`ListBox` renders as a real scrollable list (via `<select size="N">`), not a dropdown — closer to how guizero's own tkinter Listbox looks than an HTML `<select>` would by default. With `multiselect=True`, `.value` returns a list; otherwise it returns a single item (or `None` if nothing is selected).
+
+**Widget set so far:** `App`, `Box`, `Text`, `PushButton`, `TextBox`, `Drawing`, `Slider`, `Combo`, `ListBox`, with `layout="auto"` (stacked) or `layout="grid"` (using each widget's `grid=[column, row]`). Not yet supported: `Picture`, `Waffle`, `MenuBar`, and multiple windows. `Drawing.image()` is a no-op stub — there's no image-loading pipeline in this playground. Unrecognised keyword arguments are accepted and silently ignored rather than raising, so tutorials using not-yet-supported options degrade gracefully instead of crashing.
 
 ### Matplotlib
 
@@ -260,6 +285,7 @@ public/
     demo_guizero_counter.py # guizero GUI demo — a simple +1/-1 counter app
     demo_guizero_textbox.py # guizero GUI demo — live TextBox-to-Text binding
     demo_guizero_drawing.py # guizero GUI demo — Drawing canvas shapes and text
+    demo_guizero_selectors.py # guizero GUI demo — Slider, Combo, multiselect ListBox
     test_matplotlib.py     # Matplotlib chart rendering test
     test_numpy.py          # NumPy test
     test_pandas.py         # Pandas test
@@ -298,6 +324,8 @@ Real tkinter (what guizero normally wraps) needs an actual display server, which
 The interesting problem is `app.display()`: in real guizero this call blocks until the window closes, and clicking a button while it's blocked has to call back into the still-running script. A one-shot "run to completion" interpreter can't do that, so `app.display()` is rewritten to `await app.display()` by the same AST transformer that already handles `input()` — it recognises calls to a method named `display` and wraps them in `await`, promoting the enclosing function to `async def` as needed. `display()` then awaits a JavaScript Promise that only resolves when the **⏹ Stop** button is pressed (or `App.destroy()` is called), which cooperatively yields control back to the browser's event loop — letting button clicks fire and call back into Python — without freezing the tab.
 
 Button and TextBox `command=` callbacks are kept alive across multiple events using `pyodide.ffi.create_proxy`; those proxies are explicitly destroyed before each new Run (and on Playground Reset) to avoid leaking references between scripts. `TextBox.value` is read live from the DOM input on every access rather than cached in Python, since the student may have typed since Python last touched the widget. `Drawing` widgets hold their own 2D canvas context and draw immediately on each method call, the same direct-drawing approach `turtle.py` already uses — no virtual scene graph, no batching.
+
+`Slider`, `Combo` and `ListBox` follow guizero's own convention: their `command` proxy is called directly with the widget's new value (a JS number, string, or array, auto-converted by Pyodide into a Python int/str/list) rather than through the no-args wrapper `PushButton`/`TextBox` use — there's no `args=` support for these three, matching real guizero. `ListBox` is a native `<select size="N">` rather than a dropdown, which is what gives it guizero's always-visible scrollable-list look without any custom rendering.
 
 ---
 
@@ -345,6 +373,12 @@ Uses ESLint with the `eslint-plugin-react-hooks` and `eslint-plugin-react-refres
 ---
 
 ## Changelog
+
+### v0.0.10 — 2026-09-25
+
+**New features**
+
+- **guizero `Slider`, `Combo`, `ListBox` (Phase 4)** — `Slider` (a range input), `Combo` (a dropdown), and `ListBox` (a native scrollable `<select size="N">`, with `multiselect=True` returning a list from `.value`). All three call their `command` with the widget's new value automatically, matching real guizero's convention for these widgets (no `args=`, unlike `PushButton`/`TextBox`). Added `public/scripts/demo_guizero_selectors.py` (a pizza-order form exercising all three together).
 
 ### v0.0.9 — 2026-09-24
 
