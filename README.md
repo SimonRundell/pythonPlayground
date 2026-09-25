@@ -256,6 +256,7 @@ public/
   scripts/
     test_builtins.py       # Standard library functionality test
     test_turtle.py         # Turtle graphics test
+    test_guizero.py        # guizero combined test — every Phase 1-3 widget in one app
     demo_guizero_counter.py # guizero GUI demo — a simple +1/-1 counter app
     demo_guizero_textbox.py # guizero GUI demo — live TextBox-to-Text binding
     demo_guizero_drawing.py # guizero GUI demo — Drawing canvas shapes and text
