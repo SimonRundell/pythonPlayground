@@ -2,7 +2,7 @@
  * CMFloatAd
  *
  * Floating branding banner – hover to expand full contact details.
- * Modified for Exeter College by Simon Rundell, Dept of ITDD.
+ * Modified for Exeter College by Simon Rundell, Dept of Cybersecurity and Digital Technologies.
  *
  * Self-contained: every style is inline (no external stylesheet dependency),
  * so this file can be dropped into any React app as-is.
